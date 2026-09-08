@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useZoneHome } from '@/components/site/zoneCta';
+import ZoneLink from '@/components/site/ZoneLink';
 import { useZoneDesktop } from '@/components/site/zoneBreakpoint';
 import {
   SiteHeader, SiteFooter, useSiteCss, useDocumentMeta, useZoneLang,
@@ -110,9 +110,9 @@ export default function Legal({ doc = 'terms' }) {
                   under one panel). */}
               <nav className="doc-tabs" aria-label={LEGAL_UI.tablistLabel}>
                 {DOCS.map((k) => (
-                  <Link key={k} to={`/${k}`} aria-current={active === k ? 'page' : undefined}>
+                  <ZoneLink key={k} to={`/${k}`} aria-current={active === k ? 'page' : undefined}>
                     {LEGAL[k].tab}
-                  </Link>
+                  </ZoneLink>
                 ))}
               </nav>
             </div>

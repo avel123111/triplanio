@@ -73,9 +73,9 @@ const MARKERS = [
   { name: 'site-dup-exempt', life: 'inFile' },
   { name: 'site-base-exempt', life: 'inFile' },
   { name: 'nav-exempt', life: 'inFile' },
-  // 2ah — «эта ссылка зоны намеренно уходит на английский адрес». Тоже вечный:
-  // накопление таких строк и есть возврат того самого дефекта по одной штуке.
-  { name: 'zone-lang-exempt', life: 'inFile' },
+  // 2ah — «этот файл зоны намеренно ходит мимо двери навигации». Тоже вечный:
+  // накопление таких строк и есть возврат дефекта «язык слетает» по одной штуке.
+  { name: 'zone-nav-exempt', life: 'inFile' },
 ];
 
 const git = (args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });

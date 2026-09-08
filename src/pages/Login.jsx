@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { track, withVisitCampaign } from '@/lib/analytics';
 import { getSignupMarks } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
@@ -14,6 +13,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useSiteCss } from '@/components/site/SiteChrome';
 import AuthShell from '@/components/site/AuthShell';
+import ZoneLink from '@/components/site/ZoneLink';
 import { setRemember as setRememberFlag } from '@/api/authStorage';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -909,7 +909,7 @@ export default function Login() {
                 </form>
                 <p className="legal">
                   {t('auth.terms_pre')}{' '}
-                  <Link to="/terms">{t('auth.terms_link')}</Link> {t('auth.terms_and')} <Link to="/privacy">{t('auth.privacy_link')}</Link>.
+                  <ZoneLink to="/terms">{t('auth.terms_link')}</ZoneLink> {t('auth.terms_and')} <ZoneLink to="/privacy">{t('auth.privacy_link')}</ZoneLink>.
                 </p>
                 {/* nav-exempt: якорь смены экрана внутри страницы, не навигация */}
                 <p className="alt">{t('auth.have_account')}{' '}<a href="#" onClick={e => { e.preventDefault(); goto('login'); }}>{t('auth.sign_in')}</a></p>

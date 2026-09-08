@@ -1,72 +1,69 @@
 #!/usr/bin/env node
 /**
- * CI guard 2ah (TRIP-520) — ССЫЛКА ВНУТРИ ЗОНЫ НЕСЁТ ЯЗЫК СТРАНИЦЫ.
+ * CI guard 2ah (TRIP-533) — В ЗОНЕ ЕСТЬ ОДНА ДВЕРЬ НАВИГАЦИИ, И НИКТО МИМО НЕЁ
+ * НЕ ХОДИТ.
  *
- * ЗАЧЕМ. У лендинга и демо по три адреса — по одному на язык, — и `/` из них
- * не «просто главная», а КАНОНИЧЕСКИЙ АНГЛИЙСКИЙ адрес: `localeOf('/')` = 'en'.
- * Локаль маршрута — ВЕРХНИЙ слой языка (`I18nContext`: `маршрут ?? профиль ??
- * посетитель`), поэтому уход на голый `/` не «оставляет язык как был», а
- * ПЕРЕКЛЮЧАЕТ его на английский. Один литерал `to="/"` стирает и выбор
- * посетителя, и язык профиля:
+ * ЗАЧЕМ. У лендинга и демо по три адреса, по одному на язык, и `/` из них —
+ * КАНОНИЧЕСКИЙ АНГЛИЙСКИЙ (`localeOf('/') === 'en'`). Локаль маршрута — верхний
+ * слой языка (`routeLocale ?? profile ?? visitor`), поэтому уход на голый `/`
+ * не «сохраняет язык», а переключает его на английский:
  *
- *     /es  →  «Начать»  →  /login (испанский)  →  логотип  →  /  (английский)
+ *     /es → «Начать» → /login (испанский) → логотип → / (английский)
  *
- * ПОЧЕМУ ГАРД, А НЕ ВНИМАТЕЛЬНОСТЬ. Дефект чинили по одной странице: TRIP-520
- * перевёл на `useZonePath` лендинг, демо, публичку и юр-страницы — и прошёл
- * мимо `AuthShell` (вход и приглашение), единственной оболочки зоны, чей
- * логотип рисует не `SiteChrome`. Именно она и есть самый ходовой выход из
- * зоны. Правило «не забывай про язык» не имеет предиката, поэтому отставание
- * очередного места видно только пользователю — и выглядит как «опять
- * проебался язык», хотя чинили честно.
+ * ★★ ПОЧЕМУ ПРЕДИКАТ ИМЕННО ТАКОЙ — И ПОЧЕМУ ПРЕЖНИЙ БЫЛ ДЫРЯВ ПО ПОСТРОЕНИЮ.
+ * Первая редакция этого гарда перечисляла ФОРМЫ ЗАПИСИ адреса (`to="/"`,
+ * `to={'/'}`, `nav('/')`, голый `DEMO_PATH`). Перечисление синтаксиса не может
+ * быть полным: в этом же дереве уже лежала ссылка `` to={`/${k}`} `` (табы
+ * юр-документов), которой оно не видит, а рядом ждали `nav(cond ? '/' : '/x')`
+ * и `navigate({ pathname: '/' })`. Гард, чей предикат дырявый, опаснее
+ * отсутствующего: он зелёный и его показания принимают за факт — ровно так и
+ * прошёл дефект, ради которого писался прежний гейт.
  *
- * ЧТО ФЛАГИТ. Литеральный адрес ЛОКАЛИЗОВАННОЙ страницы (`LOCALISED_PAGES` —
- * `/` и демо), приехавший в НАВИГАЦИЮ, в файле периметра зоны:
- *   • `to="/"`, `to={'/'}`      — `<Link>`/`<NavLink>` react-router;
- *   • `nav('/')`, `navigate('/')` — императивный переход;
- *   • `to={DEMO_PATH}`, `nav(DEMO_PATH)` — голая константа демо: адрес верный,
- *     язык потерян ровно так же.
- * Правильная форма ОДНА: `useZonePath(path)` (или `useZoneHome()` для лого) —
- * он складывает `routeLocale ?? lang` и приклеивает префикс.
+ * Поэтому вопрос сменён с «правильно ли записан адрес» на «МОЖНО ЛИ ВООБЩЕ
+ * ЗАПИСАТЬ АДРЕС МИМО ДВЕРИ». Ответ читается одной строкой импорта:
+ *
+ *   · адрес резолвит `useZoneHref`/`useZonePath` (`components/site/zoneCta.js`)
+ *     — он ОДИН решает, нужен ли префикс, по `LOCALISED_PAGES`;
+ *   · переход — `useZoneNav()` (там же), ссылка — `<ZoneLink>`
+ *     (`components/site/ZoneLink.jsx`);
+ *   · значит ВЕСЬ react-router, которым можно уйти на другой адрес
+ *     (`Link`, `NavLink`, `Navigate`, `useNavigate`), в зоне импортируют РОВНО
+ *     ЭТИ ДВА ФАЙЛА. Все остальные — через дверь, и неправильную ссылку там
+ *     нельзя написать.
+ *
+ * Предикат полный: обойти дверь, не написав импорта, нельзя.
  *
  * ЧЕГО НЕ ФЛАГИТ — названо здесь, чтобы следующий агент не «чинил» верное:
- *   • `/terms`, `/privacy`, `/login`, `/trips` и прочие НЕлокализованные адреса
- *     — у них одна версия, адрес про язык молчит, и язык берётся из слоя i18n;
- *   • любое ВЫРАЖЕНИЕ (`to={home}`, `href={site}`) — статически про него ничего
- *     не известно, а санкционированный строитель именно выражение и даёт;
- *   • `href="/"` на `<a>` — это уже красный по гарду 2ad (перезагрузка теряет
- *     метку кампании), второй раз краснеть не за чем.
+ *   · `useLocation`, `useParams`, `useSearchParams` — ЧТЕНИЕ адреса, уйти по
+ *     ним никуда нельзя;
+ *   · `<a href>` наружу и якоря — это не роутер (внутренние `<a href>` держит
+ *     сосед 2ad);
+ *   · `window.location` — не импорт; его половину («адрес зоны не читается мимо
+ *     роутера») пинит `zoneLangLinks.test.js`.
  *
- * Периметр — общий `zone-perimeter.mjs`, список локализованных страниц — прямо
- * из `routePaths.js`, то есть у гарда нет своей копии НИ ОДНОГО из двух фактов.
+ * Периметр — общий `zone-perimeter.mjs`. Имена двери — здесь, и это
+ * единственная копия факта во всём гарде; разъехаться с настоящей дверью не
+ * даёт `check-zone-lang-links.test.mjs`, который гоняет гард на ЖИВОМ дереве.
  *
- * Escape: `/* zone-lang-exempt: <path> — причина * /` в том же файле.
+ * Escape: `/* zone-nav-exempt: <причина> * /` в файле-нарушителе.
  *
- * Инвариант по дереву зоны (не дифф), сосед 2ad. Тест — `check-zone-lang-links.test.mjs`.
- *
- * Exit: 0 ok, 1 нарушение, 2 внутренняя ошибка / зона переехала.
+ * Инвариант по дереву зоны (не дифф), сосед 2ad. Exit: 0 ok, 1 нарушение,
+ * 2 внутренняя ошибка / зона переехала.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { SITE_ZONE, assertZonePerimeter } from './zone-perimeter.mjs';
-import { LOCALISED_PAGES } from '../../src/lib/routePaths.js';
 
-// Имена констант, под которыми адрес локализованной страницы ездит по коду.
-// Голая константа — такой же литерал: значение известно на сборке, языка в нём
-// нет. Судим по ИМЕНИ: значение гард не разворачивает, и держать его копию тут
-// значило бы завести второй источник правды о том, куда ведёт демо.
-const PATH_CONST_NAMES = ['DEMO_PATH'];
+/** Файлы двери: им сырой роутер разрешён, в этом их работа. */
+const DOOR = ['src/components/site/zoneCta.js', 'src/components/site/ZoneLink.jsx'];
 
-/** `to="/"` · `to='/'` · `to={"/"}` · `to={'/'}` — литерал в проп навигации. */
-const TO_LITERAL = /\bto\s*=\s*\{?\s*(["'])([^"']*)\1/g;
-/** `nav('/')` · `navigate("/")` — литерал в императивном переходе. */
-const NAV_LITERAL = /\b(?:nav|navigate)\s*\(\s*(["'])([^"']*)\1/g;
-/** `to={DEMO_PATH}` · `nav(DEMO_PATH)` — голая константа адреса. */
-const CONST_TARGET = new RegExp(
-  `(?:\\bto\\s*=\\s*\\{\\s*|\\b(?:nav|navigate)\\s*\\(\\s*)(${PATH_CONST_NAMES.join('|')})\\s*[,)}]`,
-  'g',
-);
+/** Импорты react-router, которыми можно УЙТИ на другой адрес. */
+const NAV_IMPORTS = ['Link', 'NavLink', 'Navigate', 'useNavigate'];
 
-const EXEMPT = /zone-lang-exempt:\s*(\S+)/g;
+/** `import { … } from 'react-router-dom'` — забираем список имён. */
+const RR_IMPORT = /import\s*\{([^}]*)\}\s*from\s*['"]react-router-dom['"]/g;
+
+const EXEMPT = /zone-nav-exempt:/;
 
 /** Гасим комментарии, СОХРАНЯЯ длину и переводы строк: индекс совпадения обязан
  *  и дальше отображаться в номер строки исходника (идиома 2ad). */
@@ -76,9 +73,6 @@ function stripComments(src) {
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
 }
 
-/** Исходники зоны. Тесты — мимо: инвариант зоны пинится РАЗБОРОМ исходников
- *  (`zoneLangLinks.test.js`), то есть сломанная форма стоит там нарочно, как
- *  ожидание, а не как ссылка, по которой кто-то уйдёт. */
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
@@ -93,43 +87,42 @@ const lineOf = (src, idx) => src.slice(0, idx).split('\n').length;
 
 try {
   assertZonePerimeter('check-zone-lang-links');
-  if (!LOCALISED_PAGES.length) {
-    console.error('::error::2ah: LOCALISED_PAGES пуст — судить нечего, а гард отвечал бы «чисто».');
-    process.exit(2);
-  }
-  const localised = new Set(LOCALISED_PAGES);
 
   const files = SITE_ZONE.flatMap((p) => (statSync(p).isDirectory() ? walk(p) : [p])).map(rel);
 
+  // ★ ДВЕРЬ ОБЯЗАНА СУЩЕСТВОВАТЬ И БЫТЬ В ПЕРИМЕТРЕ. Исчезни она — гард начал бы
+  // отвечать «нарушений нет» про зону, в которой двери просто больше нет.
+  const missingDoor = DOOR.filter((d) => !files.includes(d));
+  if (missingDoor.length) {
+    console.error(`::error::2ah: дверь навигации зоны не найдена в периметре: ${missingDoor.join(', ')}`);
+    console.error('  Гард судил бы зону, у которой нет двери, и молчал. Переехала дверь — правь DOOR здесь.');
+    process.exit(2);
+  }
+
   const offenders = [];
   for (const f of files) {
+    if (DOOR.includes(f)) continue;
     const raw = readFileSync(f, 'utf8');
-    const exempt = new Set([...raw.matchAll(EXEMPT)].map((m) => m[1]));
+    if (EXEMPT.test(raw)) continue;
     const code = stripComments(raw);
-    const hit = (idx, shown) => offenders.push({ file: f, line: lineOf(code, idx), shown });
-
-    for (const re of [TO_LITERAL, NAV_LITERAL]) {
-      for (const m of code.matchAll(re)) {
-        if (!localised.has(m[2]) || exempt.has(m[2])) continue;
-        hit(m.index, `"${m[2]}"`);
-      }
-    }
-    for (const m of code.matchAll(CONST_TARGET)) {
-      if (exempt.has(m[1])) continue;
-      hit(m.index, m[1]);
+    RR_IMPORT.lastIndex = 0;
+    for (const m of code.matchAll(RR_IMPORT)) {
+      const names = m[1].split(',').map((n) => n.trim().split(/\s+as\s+/)[0].trim()).filter(Boolean);
+      const bad = names.filter((n) => NAV_IMPORTS.includes(n));
+      if (bad.length) offenders.push({ file: f, line: lineOf(code, m.index), bad });
     }
   }
 
   if (offenders.length) {
-    console.error('::error::2ah zone-lang-links — переход на локализованную страницу без языка (адрес английский, язык сбросится):');
-    for (const o of offenders) console.error(`  ✗ ${o.file}:${o.line} — ${o.shown}`);
-    console.error('    → адрес строит useZonePath(path) / useZoneHome() (`components/site/zoneCta.js`):');
-    console.error('      он складывает routeLocale ?? lang и вешает языковой префикс.');
-    console.error('      Осознанный уход именно на английский — /* zone-lang-exempt: <path> — причина */.');
+    console.error('::error::2ah zone-nav — переход зоны мимо двери: адрес соберётся без языка и сбросит его в английский:');
+    for (const o of offenders) console.error(`  ✗ ${o.file}:${o.line} — ${o.bad.join(', ')} из react-router-dom`);
+    console.error('    → ссылка = <ZoneLink to="…">, переход = useZoneNav(), адрес = useZoneHref().');
+    console.error('      Дверь сама решает, нужен ли префикс (LOCALISED_PAGES), поэтому `to` пишется БЕЗ языка.');
+    console.error('      Осознанное исключение — /* zone-nav-exempt: <причина> */ в файле.');
     process.exit(1);
   }
 
-  console.log(`check-zone-lang-links: ${files.length} файлов зоны — переходы на ${LOCALISED_PAGES.join(', ')} несут язык — OK`);
+  console.log(`check-zone-lang-links: ${files.length} файлов зоны — навигация только через дверь (${DOOR.length} файла) — OK`);
   process.exit(0);
 } catch (e) {
   console.error(`::error::check-zone-lang-links internal error: ${e.message}`);

@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 
 import {
   APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, LOCALISED_PAGES, PREFIXED_LANGS, DEFAULT_LANG,
-  isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls, localeOf,
+  isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls, localeOf, zoneHref,
 } from './routePaths.js';
 import { LANGUAGES, FALLBACK_LANG } from './i18n/translations.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
@@ -200,4 +200,59 @@ test('незалогиненный получает вход по каждому
   assert.match(branch, /element=\{<RedirectToLogin \/>\}/, 'адрес приложения без сессии больше не ведёт во вход');
   assert.match(branch, /path="\*" element=\{<PageNotFound \/>\}/, 'чужой адрес больше не отдаёт 404');
   assert.doesNotMatch(branch, /<LandingPage \/>/, 'лендинг вернулся на чужой адрес');
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * `zoneHref` — РЕЗОЛВЕР АДРЕСА ЗОНЫ (TRIP-533).
+ *
+ * Он один решает, нужен ли адресу языковой префикс, и через него проходит КАЖДАЯ
+ * ссылка и КАЖДЫЙ переход зоны (дверь `zoneCta.js` + `<ZoneLink>`). Значит его
+ * ошибка — это не «одна кривая ссылка», а язык, слетающий на всём сайте, либо
+ * 404 на ровном месте. Проверяется ВЫЗОВОМ, а не разбором исходника: прежний
+ * гейт этого правила был регуляркой по тексту функции и разъехался с ней молча.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+test('локализованная страница получает префикс своего языка', () => {
+  assert.equal(zoneHref('/', 'es'), '/es');
+  assert.equal(zoneHref('/', 'ru'), '/ru');
+  assert.equal(zoneHref(DEMO_PATH, 'es'), `/es${DEMO_PATH}`);
+});
+
+test('★ английский живёт БЕЗ префикса — это адрес, на который ведут все ссылки на нас', () => {
+  assert.equal(zoneHref('/', 'en'), '/');
+  assert.equal(zoneHref(DEMO_PATH, 'en'), DEMO_PATH);
+});
+
+test('★★ НЕлокализованной странице префикс не приклеивается — такого адреса не существует', () => {
+  // Именно тут ошибался бы голый `withLangPath`: он вернул бы `/ru/login`,
+  // адрес, которого нет ни в одном маршруте (`isZoneRoute` его не знает).
+  for (const path of ['/login', '/terms', '/privacy', '/reset-password', '/trips']) {
+    assert.equal(zoneHref(path, 'ru'), path, path);
+    assert.equal(zoneHref(path, 'es'), path, path);
+    assert.equal(isZoneRoute(zoneHref(path, 'ru')) || !isZonePage(path), true, path);
+  }
+});
+
+test('★★ идемпотентен: адрес можно прогнать через дверь дважды', () => {
+  // На этом стоят переключатель языка (резолвит на ЧУЖОЙ язык поверх текущего)
+  // и клик по логотипу (адрес приезжает уже с префиксом).
+  assert.equal(zoneHref(zoneHref('/', 'es'), 'es'), '/es');
+  assert.equal(zoneHref(zoneHref('/', 'es'), 'ru'), '/ru', 'смена языка поверх чужого префикса');
+  assert.equal(zoneHref(zoneHref(DEMO_PATH, 'ru'), 'en'), DEMO_PATH, 'возврат на английский снимает префикс');
+});
+
+test('★ хвост адреса переживает резолв — в нём якорь и метка кампании', () => {
+  assert.equal(zoneHref('/?camp=x#together', 'es'), '/es?camp=x#together');
+  assert.equal(zoneHref('/#together', 'ru'), '/ru#together');
+  assert.equal(zoneHref('/login?mode=signup', 'ru'), '/login?mode=signup');
+  assert.equal(zoneHref('/es?camp=x', 'ru'), '/ru?camp=x', 'хвост не мешает снять чужой префикс');
+});
+
+test('каждый испечённый языковой адрес резолвится сам в себя', () => {
+  // Связка с выпечкой: если резолвер и карта сайта разойдутся, ссылка внутри
+  // сайта поведёт на адрес, которого сборка не печёт.
+  for (const url of prerenderedUrls()) {
+    const { lang } = splitLangPath(url);
+    assert.equal(zoneHref(url, lang ?? DEFAULT_LANG), url, url);
+  }
 });
