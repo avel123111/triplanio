@@ -25,7 +25,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   insertNode, withNights, recomputeDates, makeNode,
-  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, cityNodesOf,
+  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, cityNodesOf, visitNumberOf,
 } from './routeModel.js';
 
 const city = (name, extra = {}) => ({
@@ -198,4 +198,19 @@ test('★★ ФИНИШ НЕ ГОРОД СПИСКА: он якорь, и в г�
   const nodes = [anchor('Рим', 'start'), stop('Милан', 2), anchor('Ницца', 'end')];
   assert.deepEqual(cityNodesOf(nodes).map((n) => n.city_name), ['Милан']);
   assert.ok(isAnchorNode(endOf(nodes)));
+});
+
+test('★ visitNumberOf: номер получают только города посещения — якоря и пересадки пропускаются, как у пинов карты', () => {
+  const gaz = (name) => ({ city_name: name, city_name_en: name, country_code: 'IT', geonameid: name.length, latitude: 1, longitude: 2 });
+  const nodes = [
+    makeNode(gaz('Madrid'), 'start', { id: 's' }),
+    makeNode(gaz('Rome'), 'transit', { id: 'a', nights: 2 }),
+    makeNode(gaz('Pisa'), 'waypoint', { id: 'w', nights: 0 }),
+    makeNode(gaz('Bologna'), 'transit', { id: 'b', nights: 1 }),
+    makeNode(gaz('Madrid'), 'end', { id: 'e' }),
+  ];
+  assert.equal(visitNumberOf(nodes, nodes[1]), 1);
+  assert.equal(visitNumberOf(nodes, nodes[3]), 2, 'пересадка номер не потребляет');
+  assert.equal(visitNumberOf(nodes, nodes[2]), 0, 'у пересадки номера нет');
+  assert.equal(visitNumberOf(nodes, nodes[0]), 0, 'у якоря номера нет');
 });

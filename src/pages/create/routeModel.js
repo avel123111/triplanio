@@ -66,6 +66,14 @@ export const endOf = (nodes) => (nodes || []).find((n) => n.kind === 'end') || n
 /** Города списка для карты и ревью: всё, кроме якорей. */
 export const cityNodesOf = (nodes) => (nodes || []).filter((n) => !isAnchorNode(n));
 
+/** Номер города в маршруте (1-based). Считаются ТОЛЬКО города посещения: якоря
+ *  и пересадки номера не получают — ровно как пины карты (`cityPoints` в
+ *  `lib/map/markers.js`). Одно правило на шаг 2 и ряд маршрута под лентой ИИ;
+ *  раньше шаг 2 считал по индексу среди всех неякорей, и после пересадки его
+ *  цифры расходились с картой (1, 2, ·, 4 против 1, 2, ·, 3). */
+export const visitNumberOf = (nodes, node) =>
+  cityNodesOf(nodes).filter((n) => n.kind !== 'waypoint').findIndex((n) => n.id === node.id) + 1;
+
 /** Финиш ВЫБРАН — то есть в списке есть узел `end`. Формы у него одна, поэтому
  *  и вывода никакого: «где финиш» = `endOf(nodes)`. Второго ответа не бывает. */
 export const hasExplicitEnd = (nodes) => !!endOf(nodes);

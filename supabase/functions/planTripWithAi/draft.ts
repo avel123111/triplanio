@@ -37,7 +37,7 @@ const NODE_FIELDS: Record<string, FieldSpec> = {
   kind: { type: 'string', required: true, enum: ['start', 'transit', 'waypoint', 'end'] },
   city_name: { type: 'string', max: MAX_STR },
   city_name_en: { type: 'string', max: MAX_STR },
-  country_code: { type: 'string', max: MAX_STR },
+  country_code: { type: 'string', max: 2 }, // ISO 3166-1 alpha-2
   nights: { type: 'number', min: 0, nullable: true },
   geonameid: { type: 'number', nullable: true },
 };
@@ -76,26 +76,21 @@ const pickNode = (n: Record<string, unknown>): DraftNode => {
 
 /**
  * Приводит тело `draft` к известной форме. `undefined`/`null` — законно (первая
- * реплика без черновика) → `null`. Нарушение формы → `Refusal` (400,
- * `INVALID_INPUT`), как у любого шва записи.
+ * реплика без черновика) → `{ draft: null }`. Нарушение формы → `Refusal` (400,
+ * `INVALID_INPUT`), как у любого шва записи; вызыватель различает исходы той же
+ * проверкой `'status' in r`, что и `mutate.ts`, — своего предиката у шва нет.
  */
-export function normalizeDraft(input: unknown): Draft | null | Refusal {
-  if (input == null) return null;
+export function normalizeDraft(input: unknown): Refusal | { draft: Draft | null } {
+  if (input == null) return { draft: null };
   if (typeof input !== 'object' || Array.isArray(input)) return bad('Field "draft" must be an object');
   const r = validateFields(DRAFT_FIELDS, input as Record<string, unknown>, { insert: true });
   if ('status' in r) return r;
   const v = r.values;
   return {
-    startDate: (v.startDate as string | null | undefined) ?? null,
-    title: (v.title as string | undefined) ?? '',
-    nodes: (v.nodes as Record<string, unknown>[]).map(pickNode),
+    draft: {
+      startDate: (v.startDate as string | null | undefined) ?? null,
+      title: (v.title as string | undefined) ?? '',
+      nodes: (v.nodes as Record<string, unknown>[]).map(pickNode),
+    },
   };
 }
-
-/**
- * Отдельный предикат, а не привычное шву `'status' in r`: `normalizeDraft`
- * возвращает ТРИ исхода (драфт, `null` «драфта не было», отказ), и `in` по
- * `null` падает — сузить объединение им нельзя.
- */
-export const isRefusal = (r: unknown): r is Refusal =>
-  !!r && typeof r === 'object' && 'status' in r && 'code' in r;

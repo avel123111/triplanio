@@ -26,6 +26,8 @@
 // reproduces the stored dates exactly.
 
 import { DateTime } from 'luxon';
+import { dayMonth } from './i18n/dayMonth.js';
+import { localeTag } from './i18n/translations.js';
 
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
@@ -64,33 +66,25 @@ export function layoutDates(nodes, baseISO) {
 }
 
 // ─── Даты узла для показа (переехали из ManualPlanner, TRIP-527: ряд маршрута
-// рисуют три экрана, и строку дат им даёт одно место) ─────────────────────────
+// рисуют три экрана, и строку дат им даёт одно место). Арифметика — та же
+// luxon-дверь, что у `layoutDates` выше; формат — канон `dayMonth`.
+// ★ Зовём его НАПРЯМУЮ, а не обёрткой `formatDayMonth` из `format.js`, хотя
+// тело у них одно: `format.js` импортирует `./translations` БЕЗ расширения, а
+// такой путь не резолвится под голым Node — этим же модулем ходят тесты
+// (`tripDates.test.js`, `routeModel.test.js`). Поэтому перевод языка в
+// locale-тег делаем здесь, тем же `localeTag`, что и обёртка.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Local YYYY-MM-DD (NOT toISOString - that converts to UTC and, in positive
-// timezones, shifts the date back a day, which broke the ±1-day stepper).
-export function ymdLocal(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const da = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${da}`;
-}
+/** Локальная календарная дата `YYYY-MM-DD` момента `d` (не `toISOString`: тот
+ *  уводит в UTC и в плюсовых поясах сдвигает день назад). */
+export const ymdLocal = (d) => DateTime.fromJSDate(d).toISODate();
 
-export function addDays(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return ymdLocal(d);
-}
+/** `YYYY-MM-DD` + N дней — той же UTC-арифметикой, что цепочка дат выше. */
+export const addDays = (dateStr, days) => toDT(dateStr).plus({ days }).toISODate();
 
-export function shortDateLabel(iso, locale = 'ru') {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return '';
-  try {
-    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(d);
-  } catch {
-    return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
-  }
-}
+/** «12 окт.» — канон `dayMonth` (день впереди в любой локали; дата без времени
+ *  читается как календарный день, не как момент в UTC). */
+export const shortDateLabel = (iso, lang) => dayMonth(iso, undefined, localeTag(lang));
 
 // City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
 // null when the trip start isn't set yet. Shared by the city row and the map

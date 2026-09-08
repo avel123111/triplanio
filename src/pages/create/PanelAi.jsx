@@ -6,7 +6,7 @@ import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize } from '@/lib/i18n/format';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { startOf, endOf, cityNodesOf } from '@/pages/create/routeModel';
+import { startOf, endOf, cityNodesOf, visitNumberOf } from '@/pages/create/routeModel';
 import { addDays, cityDateRange, shortDateLabel } from '@/lib/tripDates';
 
 // =====================================================================
@@ -34,7 +34,8 @@ import { addDays, cityDateRange, shortDateLabel } from '@/lib/tripDates';
 // Слева номер (у старта/финиша — плитка с флажком в AI-тоне), затем название
 // города и под ним флаг со страной; справа даты и число ночей (у якорей — дата
 // и подпись «Старт»/«Финиш»). Собран из утилит и носителей, которые уже есть
-// (`te-row__num`, `te-cityname`, `col--a-end`, `num`, `t-meta`) — своих классов
+// (`te-row__num`, `te-cityname`, `col--a-end`, `num`, `t-meta`; страна — тем же
+// `<CountryFlag/> {country}`, что у ряда шага 2 и якорей) — своих классов
 // у ряда нет. Ритм: внутри ряда строки прижаты (`g1`), между рядами — линия и
 // воздух (`.pl-ai-draft > * + *` в app.css): иначе подпись страны ряда N стояла
 // ближе к названию ряда N+1, чем к своему названию.
@@ -44,9 +45,7 @@ function RouteRow({ lead, name, code, country, top, bottom }) {
       {lead}
       <Col gap="g1" className="grow--fit">
         <span className="te-cityname trunc">{name}</span>
-        {(code || country) && (
-          <Row as="span" gap="g2" className="muted t-meta trunc">{code ? <CountryFlag code={code} /> : null}{country}</Row>
-        )}
+        {country && <span className="muted t-meta trunc"><CountryFlag code={code} /> {country}</span>}
       </Col>
       <Col gap="g1" align="a-end">
         {top ? <span className="num t-meta">{top}</span> : null}
@@ -56,13 +55,8 @@ function RouteRow({ lead, name, code, country, top, bottom }) {
   );
 }
 
-// Плитка якоря: AI-тон каналами на `.te-row__node` — узаконенная точка входа
-// тона на call-site; инлайн живёт ОДИН раз на оба якоря.
-const anchorLead = (
-  <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'var(--ai-soft)', '--hl-ink': 'var(--ai-ink)' }}>
-    <Icon name="flag" size={11} />
-  </Tile>
-);
+// Плитка якоря — тон `ai` плитки ДС (`.tile--ai`), без инлайна каналов.
+const anchorLead = <Tile as="span" tone="ai" className="te-row__node"><Icon name="flag" size={11} /></Tile>;
 
 // Живой маршрут (старт → города → финиш) от узлов планировщика — тех же, что
 // видит карта и шаг 2; снимка из сообщения нет.
@@ -77,7 +71,6 @@ function DraftItinerary({ nodes }) {
   const last = cities[cities.length - 1];
   const startLabel = first?.startDate ? shortDateLabel(first.startDate, lang) : null;
   const endLabel = last?.startDate ? shortDateLabel(addDays(last.startDate, +last.nights || 0), lang) : null;
-  let num = 0; // нумеруются только города посещения, пересадка номера не получает
   return (
     <Col gap="g3" className="pl-ai-draft">
       {home?.city_name && (
@@ -92,7 +85,7 @@ function DraftItinerary({ nodes }) {
         const invalid = !!c.city_name && c.latitude == null;
         const lead = isWaypoint
           ? <Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>
-          : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{++num}</Tile>;
+          : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{visitNumberOf(nodes, c)}</Tile>;
         return (
           <RouteRow
             key={c.id}

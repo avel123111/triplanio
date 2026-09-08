@@ -37,12 +37,13 @@ import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import {
   startOf, endOf, cityNodesOf, hasExplicitEnd, isAnchorNode,
-  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode,
+  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode, visitNumberOf,
 } from '@/pages/create/routeModel';
 import { applyOps, citiesInOps } from '@/pages/create/aiOps';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { addDays, cityDateRange, shortDateLabel, ymdLocal } from '@/lib/tripDates';
+import { pluralize } from '@/lib/i18n/format';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 
 // Monotonic clock for measuring a plan call's duration (n8n + LLM). performance
@@ -134,7 +135,7 @@ function computeAutoTitle(home, cities, t) {
 // ВИДА точки, — и подтверждение стало осмысленным вместо переспроса.
 // Ряд теперь показывает готовый узел и правит у него ровно две вещи: ночи и
 // порядок. Смена города = удалить и добавить заново — ровно как в редакторе.
-function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
+function CityRow({ num, node, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!node.city_name && node.latitude == null;
@@ -152,9 +153,11 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
       <Icon name="drag" size={14} />
     </span>
   );
+  // Узел пересадки — тон `transfer` плитки, пунктирный контур даёт правило
+  // `.te-row__node.tile--transfer` (одно на все ряды маршрута).
   const lead = isWaypoint
-    ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
-    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
+    ? <Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>
+    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{num}</Tile>;
   const dates = isWaypoint
     ? <><Badge size="tiny">{t('tse.layover')}</Badge>{dateRange}</>
     : dateRange;
@@ -399,11 +402,6 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
      Старт городом не является: из него выезжают, в нём не ночуют. */
   const hasCities = cityNodesOf(nodes).length > 0;
   const hasEnd = hasExplicitEnd(nodes);
-  // Нумеруются только города: у якорей номера нет ни в редакторе, ни здесь.
-  // Номер берётся из ЗАФИКСИРОВАННОГО порядка, а не из превью перетаскивания —
-  // иначе цифры прыгали бы под пальцем. Сверка по id, а не по ссылке: хук возит
-  // те же объекты, но полагаться на это в нумерации незачем.
-  const numberOf = (node) => cityNodesOf(nodes).findIndex((n) => n.id === node.id);
 
   return (
     <div>
@@ -469,7 +467,11 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
               onMouseLeave={onHover ? () => onHover(null) : undefined}
             >
               <CityRow
-                idx={numberOf(n)}
+                /* Номер считается по ЗАФИКСИРОВАННОМУ порядку (`nodes`), а не по
+                   превью перетаскивания (`displayNodes`) — иначе цифры прыгали бы
+                   под пальцем. Правило одно с картой и лентой ИИ (`visitNumberOf`:
+                   якоря и пересадки номера не получают). */
+                num={visitNumberOf(nodes, n)}
                 node={n}
                 isDragging={draggingId === n.id}
                 isPressing={pressingId === n.id}
@@ -714,7 +716,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
             />
           </div>
           <div className="s">
-            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
+            <Stat label={t('planner.duration')} value={`${totalNights} ${pluralize(t, totalNights, 'view.nights', lang)}`} />
           </div>
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
@@ -739,7 +741,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
                   name={c.city_name}
                   sub={isFin
                     ? `${c.country || '-'} · ${t('planner.sub_finish')}`
-                    : `${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
+                    : `${c.country || '-'} · ${c.nights} ${pluralize(t, c.nights, 'view.nights', lang)}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
                   muted={isFin}
                 />
               );
@@ -1543,7 +1545,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           art="trip-created"
           kind="success"
           title={t('planner.created_title')}
-          body={t('planner.created_desc', { title: tripTitle || autoTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
+          body={t('planner.created_desc', { title: tripTitle || autoTitle, cities: cities.length, citiesWord: pluralize(t, cities.length, 'trip.cities_count', lang), nights: totalNights, nightsWord: pluralize(t, totalNights, 'view.nights', lang) })}
           action={(
             <>
               {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
@@ -1686,9 +1688,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       <ShellSlot name="status">
         {totalNights > 0 && (
           <>
-            <b>{cities.length}</b> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
+            <b>{cities.length}</b> {pluralize(t, cities.length, 'trip.cities_count', lang)}
             <span className="muted-2">·</span>
-            <b>{totalNights}</b> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
+            <b>{totalNights}</b> {pluralize(t, totalNights, 'view.nights', lang)}
           </>
         )}
       </ShellSlot>

@@ -21,7 +21,7 @@ import { requireUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt, n8nWebhookUrl } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { envTag } from '../_shared/envTag.ts';
-import { isRefusal, normalizeDraft } from './draft.ts';
+import { normalizeDraft } from './draft.ts';
 
 // TRIP-111: лимит генераций ИИ-планировщика. Вешается на САМ вызов генерации
 // (не на сохранение трипа), поэтому закрывает и delete+recreate, и спам без
@@ -38,8 +38,9 @@ Deno.serve(withHandler('planTripWithAi', async (req, corsHeaders) => {
     if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });
     // Форма драфта — общий шов валидации (`draft.ts` → `validateFields`), отказ
     // едет тем же `refusalResponse`, что у записи (400 INVALID_INPUT).
-    const draft = normalizeDraft(rawDraft);
-    if (isRefusal(draft)) return refusalResponse(draft, corsHeaders);
+    const parsed = normalizeDraft(rawDraft);
+    if ('status' in parsed) return refusalResponse(parsed, corsHeaders);
+    const { draft } = parsed;
 
     // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111). Общий примитив
     // rate_limit_hits (bucket=ai_trip_planner, key=user_id).

@@ -1587,7 +1587,7 @@ function GridNode({ showCols = true, readOnly = false, seg, stayNum, cityConf, h
     return (
       <CityRow variant="editor" dragging={rowDrag?.dragging} pressing={rowDrag?.pressing} onArm={rowDrag?.onArm} onClick={onOpenCity}
         grip={gripEl}
-        lead={<Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>}
+        lead={<Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>}
         name={seg.city_name}
         conf={<Conf n={cityConf} />}
         dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
