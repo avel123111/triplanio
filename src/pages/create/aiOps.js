@@ -33,7 +33,15 @@ import {
 } from './routeModel.js';
 import { isYmd } from '../../lib/time.js';
 
-const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', country_code: 'string' };
+/**
+ * ГОРОД В ОПЕРАЦИИ. `geonameid` — КЛЮЧ справочника, который модель получает от
+ * инструмента `gazetteerSearch` (TRIP-524): она ищет город, ВИДИТ кандидатов с
+ * регионом и населением, выбирает того, кто вяжется с соседями по маршруту, и
+ * возвращает его ключ. Поле необязательное намеренно: пока инструмент не
+ * подключён (или модель им не воспользовалась), город приезжает одними именами
+ * и резолвится поиском ровно как раньше — обратная совместимость по построению.
+ */
+const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', country_code: 'string', geonameid: 'id?' };
 
 /** Виды узла, которые модель вправе назвать в `set_route`. Пересадку она не
  *  выбирает: 0 ночей и есть пересадка (вид выводит `cityNode`). */
@@ -62,18 +70,19 @@ const ROUTE_NODE = { kind: 'kind', ...CITY, nights: 'count?' };
  * промпта. Имена полей города те же, что модель отдавала и раньше.
  *
  * Типы: `string` (непустая строка), `date` (`YYYY-MM-DD` + реальная дата),
- * `count` (ЦЕЛОЕ ≥ 0 — число ночей), `ref` (ссылка на узел), `kind` (вид узла),
- * `nodes` (список узлов формы `ROUTE_NODE`). Имя типа называет СВОЙ смысл и
- * ничей больше: у бэка свой словарь (`FieldSpec`), общего кода с ним нет —
- * `edge` не импортирует из `src/`, — и одинаковое слово поверх разных
- * предикатов создаёт видимость связи вместо связи (замер: под общим именем
- * `number` фронтовое «целое ≥ 0» и бэковое «любое число» разъезжались молча).
+ * `count` (ЦЕЛОЕ ≥ 0 — число ночей), `id` (ключ справочника, целое > 0),
+ * `ref` (ссылка на узел), `kind` (вид узла), `nodes` (список узлов формы
+ * `ROUTE_NODE`). Имя типа называет СВОЙ смысл и ничей больше: у бэка свой
+ * словарь (`FieldSpec`), общего кода с ним нет — `edge` не импортирует из
+ * `src/`, — и одинаковое слово поверх разных предикатов создаёт видимость
+ * связи вместо связи (замер: под общим именем `number` фронтовое «целое ≥ 0»
+ * и бэковое «любое число» разъезжались молча).
  * @type {Record<string, { fields: Record<string, string>, city?: boolean, doc: string }>}
  */
 export const OPS = {
   set_route: {
     fields: { title: 'string?', startDate: 'date?', nodes: 'nodes' },
-    doc: 'set_route — построить маршрут с нуля. ТОЛЬКО когда в драфте нет ни одного города. nodes: список {kind: start|transit|end, city_name, city_name_en, country, country_code, nights}. У start/end ночей нет.',
+    doc: 'set_route — построить маршрут с нуля. ТОЛЬКО когда в драфте нет ни одного города. nodes: список {kind: start|transit|end, city_name, city_name_en, country, country_code, geonameid, nights}. У start/end ночей нет.',
   },
   add_city: {
     fields: { ...CITY, nights: 'count?', after: 'ref?' },
@@ -139,6 +148,24 @@ export const REASONS = /** @type {const} */ ({
 const isDate = (v) => isYmd(v) && !Number.isNaN(Date.parse(v));
 // `count` — число ночей: целое и неотрицательное (дробных ночей не бывает).
 const isCount = (v) => Number.isInteger(v) && v >= 0;
+// `id` — ключ справочника (geonameid). Целое > 0; строку модель тоже присылает
+// (JSON-схема просит integer, но гарантии у структурированного вывода нет), и
+// «12345» здесь тот же ключ, что 12345 — приводим, а не отказываем.
+//
+// ⚠️ А вот МУСОР в ключе отказывает операцию целиком, как любое поле словаря, —
+// и это не строгость ради строгости. Ключ вводится ЭКСПЕРИМЕНТОМ (TRIP-524): нам
+// нужно знать, приносит ли модель настоящие ключи. Тихо выбросить битый ключ и
+// уйти на поиск по имени значило бы спрятать ровно тот отказ, который мы
+// измеряем, — операция бы «работала», а вывод об инструменте был бы ложным.
+// Отказ виден в `ai_ops_rejected` с причиной `bad_shape`.
+//
+// Правило объявлено ОДИН раз — здесь: `idOf` даёт ключ либо `null`, а предикат
+// `isId` спрашивает у него же, а не повторяет условие второй копией.
+const idOf = (v) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+const isId = (v) => idOf(v) !== null;
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isRef = (v) => typeof v === 'string' || typeof v === 'number';
 
@@ -155,6 +182,7 @@ function fieldOk(type, v) {
   if (t === 'string') return isStr(v);
   if (t === 'date') return isDate(v);
   if (t === 'count') return isCount(v);
+  if (t === 'id') return isId(v);
   if (t === 'ref') return isRef(v);
   if (t === 'kind') return NODE_KINDS.includes(v);
   if (t === 'nodes') return Array.isArray(v) && v.every((n) => shapeOk(ROUTE_NODE, n));
@@ -181,6 +209,13 @@ const pickCity = (src) => ({
   country_code: (src?.country_code || '').toUpperCase(),
 });
 
+/* ⚠️ ЗАПРОС ≠ ЗАПАСНОЙ ГОРОД, хотя форма похожа. `pickCity` — это город, который
+   встанет в маршрут, КОГДА справочник не ответил: у него нет ни координат, ни
+   таймзоны, и ключа у него быть не может — иначе узел объявит идентичность,
+   которую никто не проверял. `pickQuery` — это ЗАПРОС к справочнику, и ключ в
+   нём как раз главное: по нему вызыватель берёт строку напрямую, без поиска. */
+const pickQuery = (src) => ({ ...pickCity(src), geonameid: idOf(src?.geonameid) });
+
 /**
  * Города, которые несут операции, В ПОРЯДКЕ ПОТРЕБЛЕНИЯ применятором: у
  * `set_route` — каждый узел, у city-операций — сам город. Вызыватель резолвит
@@ -192,8 +227,8 @@ export function citiesInOps(ops) {
   const out = [];
   for (const op of ops || []) {
     if (opShapeError(op)) continue;
-    if (op.op === 'set_route') for (const n of op.nodes) out.push(pickCity(n));
-    else if (OPS[op.op].city) out.push(pickCity(op));
+    if (op.op === 'set_route') for (const n of op.nodes) out.push(pickQuery(n));
+    else if (OPS[op.op].city) out.push(pickQuery(op));
   }
   return out;
 }
@@ -371,6 +406,7 @@ const JSON_TYPES = {
   string: { type: 'string' },
   date: { type: 'string', description: 'YYYY-MM-DD' },
   count: { type: 'integer', minimum: 0 },
+  id: { type: 'integer', minimum: 1, description: 'geonameid из инструмента поиска города' },
   ref: { type: 'string' },
   kind: { type: 'string', enum: [...NODE_KINDS] },
 };

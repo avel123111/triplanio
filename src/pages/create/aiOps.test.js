@@ -313,3 +313,36 @@ test('toDraftPayload: ref = String(id), ряды без города не еду
   assert.equal(d.nodes[0].nights, null);
   assert.equal(cityNodesOf(nodes).length, 2);
 });
+
+// ─── ключ справочника от инструмента (TRIP-524) ──────────────────────────────
+
+test('★ geonameid: запрос несёт ключ, запасной город — никогда, мусор в ключе отказывает операцию', () => {
+  // Ключ едет в ЗАПРОСЕ к справочнику: вызыватель по нему берёт строку напрямую.
+  const ops = [
+    { op: 'add_city', ...city('Порту'), geonameid: 2735943 },
+    { op: 'add_city', ...city('Брага') },
+    { op: 'set_route', nodes: [{ kind: 'transit', ...city('Лиссабон'), geonameid: '2267057', nights: 2 }] },
+  ];
+  assert.deepEqual(citiesInOps(ops).map((c) => c.geonameid), [2735943, null, 2267057]);
+
+  // Строка-число — тот же ключ (структурированный вывод гарантий не даёт).
+  assert.equal(opShapeError({ op: 'add_city', ...city('Порту'), geonameid: '2735943' }), null);
+  // Поле необязательное: без ключа операция законна ровно как раньше.
+  assert.equal(opShapeError({ op: 'add_city', ...city('Порту') }), null);
+  // Мусор в ключе — отказ операции целиком, чтобы эксперимент было видно.
+  assert.equal(opShapeError({ op: 'add_city', ...city('Порту'), geonameid: 'oregon' }), REASONS.bad_shape);
+  assert.equal(opShapeError({ op: 'add_city', ...city('Порту'), geonameid: 0 }), REASONS.bad_shape);
+
+  // Справочник не ответил → узел встаёт БЕЗ ключа: иначе он объявил бы
+  // идентичность, которую никто не проверял (координат и таймзоны у него нет).
+  const r = applyOps(st([]), [{ op: 'add_city', ...city('Тмутаракань'), geonameid: 2735943 }], { today: TODAY });
+  assert.equal(r.nodes.length, 1);
+  assert.equal(r.nodes[0].geonameid ?? null, null);
+
+  // Схема парсера знает ключ и в плоских полях, и в узле set_route.
+  const items = opsJsonSchema().properties.ops.items;
+  assert.deepEqual(items.properties.geonameid.type, 'integer');
+  assert.deepEqual(items.properties.nodes.items.properties.geonameid.type, 'integer');
+  // Ключ необязателен — иначе модель без инструмента не смогла бы ответить вовсе.
+  assert.ok(!items.properties.nodes.items.required.includes('geonameid'));
+});

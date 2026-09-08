@@ -1052,17 +1052,24 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      город (ИИ назвал, справочник не нашёл) остаётся без таймзоны и координат,
      как при ручном вводе, и краснеет на шаге 2 — а не получает выдуманный UTC. */
 
-  // Города из операций → ОДИН батч газеттира (TRIP-214), в порядке потребления
+  // Города из операций → ОДИН заход в газеттир, в порядке потребления
   // применятором (`citiesInOps` и `applyOps` обходят операции одинаково, это
   // запинено тестом). Не нашёлся — `null`, применятор возьмёт имя из операции.
+  //
+  // ★ ГОРОД МОЖЕТ ПРИЕХАТЬ С КЛЮЧОМ (TRIP-524), и это НЕ вторая дорога: ключ —
+  // просто самая точная форма того же вопроса «резолвни этот город». Дверь одна
+  // (`resolveCities`), и она сама берёт строку по ключу вместо поиска, когда
+  // ключ есть. Модель выбирает город инструментом справочника, ВИДЯ кандидатов
+  // вместе с регионом и координатами, — выбор по контексту маршрута резолверу
+  // недоступен по построению: он видит одно имя и страну.
   const resolveOpCities = async (ops) => {
     const want = citiesInOps(ops);
     if (want.length === 0) return [];
-    const lists = await resolveCities(
-      want.map((c) => ({ city_name: c.city_name, name_en: c.city_name_en, country: c.country, country_code: c.country_code })),
-      lang || 'ru',
-    );
-    return want.map((c, i) => (lists[i]?.[0] ? shapeAiCity(c, i, lists[i][0]) : null));
+    const lists = await resolveCities(want, lang || 'ru');
+    return want.map((c, i) => {
+      const best = lists[i]?.[0];
+      return best ? shapeAiCity(c, i, best) : null;
+    });
   };
 
   const planMut = useMutation({
