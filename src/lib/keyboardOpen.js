@@ -81,6 +81,23 @@ export function useKeyboardOpen() {
   return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
 
+/**
+ * ЕСТЬ ЛИ У ЭТОГО УСТРОЙСТВА ЭКРАННАЯ КЛАВИАТУРА ВООБЩЕ.
+ *
+ * ★ ПОЧЕМУ ЭТО ЭКСПОРТ, А НЕ ВТОРАЯ ТАКАЯ ЖЕ ПРОВЕРКА У ЧИТАТЕЛЯ. Предикат уже
+ * действует ниже — с него начинается сам наблюдатель, и по нему на десктопе
+ * `data-keyboard` не ставится никогда. Поверхности, которая решает «клавиатура
+ * моя» ПО ФОКУСУ (а не по геометрии), тот же гейт нужен по той же причине:
+ * фокус в поле на десктопе клавиатуры не поднимает, и без гейта поверхность
+ * уехала бы на верхний детент от простого клика в textarea. Это ОДИН факт с
+ * двумя читателями, а не два условия — второе объявление разъехалось бы с
+ * первым молча.
+ */
+export function hasSoftKeyboard() {
+  if (typeof window === 'undefined') return false;
+  return !!window.matchMedia?.('(pointer: coarse)').matches;
+}
+
 let started = false;
 
 export function startKeyboardOpenWatch() {
@@ -97,7 +114,7 @@ export function startKeyboardOpenWatch() {
   // never set and useKeyboardOpen() stays false — the footer no longer vanishes.
   // (The `.mbnav`/`.lp-f` CSS consumers are already `@media (max-width:640px)`,
   // so they're unaffected on desktop either way; this only fixes the JS hook.)
-  if (!window.matchMedia?.('(pointer: coarse)').matches) return;
+  if (!hasSoftKeyboard()) return;
   started = true;
 
   const root = document.documentElement;
