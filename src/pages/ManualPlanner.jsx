@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation, useNavigationType } from 'react-router-dom';
 import { track } from '@/lib/analytics';
+import { Sentry } from '@/lib/sentry';
 import { invokeFn } from '@/lib/invokeFn';
 import { tripShellQuery, tripContentQuery } from '@/lib/invokeTripFn';
 import { refusalError } from '@/lib/refusalError';
@@ -13,10 +14,9 @@ import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActi
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, nearbyCities } from '@/lib/geo';
-import CountryFlag from '@/components/common/CountryFlag';
 import { haversineKm } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, Country, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -36,11 +36,13 @@ import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import {
   startOf, endOf, cityNodesOf, hasExplicitEnd, isAnchorNode,
-  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode,
+  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode, visitNumbers,
 } from '@/pages/create/routeModel';
 import { applyOps, citiesInOps } from '@/pages/create/aiOps';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { addDays, cityDateRange, ymdLocal } from '@/lib/tripDates';
+import { pluralize } from '@/lib/i18n/format';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 
 // Monotonic clock for measuring a plan call's duration (n8n + LLM). performance
@@ -73,31 +75,9 @@ const MAP_CONTROLS = Object.freeze(['projection', 'theme']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Local YYYY-MM-DD (NOT toISOString - that converts to UTC and, in positive
-// timezones, shifts the date back a day, which broke the ±1-day stepper).
-function ymdLocal(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const da = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${da}`;
-}
-
-function addDays(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return ymdLocal(d);
-}
-
-function shortDateLabel(iso, locale = 'ru') {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return '';
-  try {
-    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(d);
-  } catch {
-    return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
-  }
-}
+// Календарная арифметика показа (`ymdLocal` / `addDays` / `cityDateRange`)
+// живёт в `@/lib/tripDates` — её читают три экрана; формат даты — общая дверь
+// `fmtDate` из `useI18nFormat()`.
 
 // Default trip start = one month ahead of today (local), YYYY-MM-DD.
 function defaultStartISO() {
@@ -120,17 +100,6 @@ function computeAutoTitle(home, cities, t) {
 // ряду и плитка вида в шторке разойтись не могут.
 // Прежний предикат `isPlannerWaypoint(city)` был вторым толкованием того же
 // факта и удалён вместе с моделью, которая его требовала.
-
-// City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
-// null when the trip start isn't set yet. Shared by the city row and the map
-// tooltip so both read identically.
-function cityDateRange(city, lang) {
-  const nights = +city.nights || 0;
-  const start = city.startDate ? shortDateLabel(city.startDate, lang) : null;
-  const end = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
-  return start ? (end ? `${start} – ${end}` : start) : null;
-}
-
 
 // CityPicker + CityAnchorRow live in ./create/anchors (shared by the planner
 // steps and the AI panel — one picker/anchor, no circular import).
@@ -166,7 +135,7 @@ function cityDateRange(city, lang) {
 // ВИДА точки, — и подтверждение стало осмысленным вместо переспроса.
 // Ряд теперь показывает готовый узел и правит у него ровно две вещи: ночи и
 // порядок. Смена города = удалить и добавить заново — ровно как в редакторе.
-function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
+function CityRow({ num, node, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!node.city_name && node.latitude == null;
@@ -184,9 +153,11 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
       <Icon name="drag" size={14} />
     </span>
   );
+  // Узел пересадки — тон `transfer` плитки, пунктирный контур даёт правило
+  // `.te-row__node.tile--transfer` (одно на все ряды маршрута).
   const lead = isWaypoint
-    ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
-    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
+    ? <Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>
+    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{num}</Tile>;
   const dates = isWaypoint
     ? <><Badge size="tiny">{t('tse.layover')}</Badge>{dateRange}</>
     : dateRange;
@@ -204,6 +175,7 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
       lead={lead}
       name={node.city_name}
       country={node.country}
+      countryCode={node.country_code}
       dates={dates}
     >
       {/* Степпер ночей — ЕДИНСТВЕННАЯ ручка вида в ряду: ноль ночей и есть
@@ -326,7 +298,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 </div>
                 <div className="grow--fit">
                   <div className="t-subheading">{c.city_name}</div>
-                  <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
+                  <div className="muted t-meta"><Country code={c.country_code} name={c.country} /> · {distLabel}</div>
                 </div>
                 {selected && (
                   <span className="tile tile--sm tile--solid tile--brand tile--round">
@@ -430,11 +402,9 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
      Старт городом не является: из него выезжают, в нём не ночуют. */
   const hasCities = cityNodesOf(nodes).length > 0;
   const hasEnd = hasExplicitEnd(nodes);
-  // Нумеруются только города: у якорей номера нет ни в редакторе, ни здесь.
-  // Номер берётся из ЗАФИКСИРОВАННОГО порядка, а не из превью перетаскивания —
-  // иначе цифры прыгали бы под пальцем. Сверка по id, а не по ссылке: хук возит
-  // те же объекты, но полагаться на это в нумерации незачем.
-  const numberOf = (node) => cityNodesOf(nodes).findIndex((n) => n.id === node.id);
+  // Номера — ОДНОЙ картой на отрисовку (правило общее с лентой ИИ, обзором и
+  // редактором); по ЗАФИКСИРОВАННОМУ порядку, не по превью перетаскивания.
+  const cityNums = visitNumbers(nodes);
 
   return (
     <div>
@@ -500,7 +470,11 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
               onMouseLeave={onHover ? () => onHover(null) : undefined}
             >
               <CityRow
-                idx={numberOf(n)}
+                /* Номер считается по ЗАФИКСИРОВАННОМУ порядку (`nodes`), а не по
+                   превью перетаскивания (`displayNodes`) — иначе цифры прыгали бы
+                   под пальцем. Правило одно с картой и лентой ИИ (`visitNumbers`:
+                   якоря и пересадки номера не получают). */
+                num={cityNums[n.id]}
                 node={n}
                 isDragging={draggingId === n.id}
                 isPressing={pressingId === n.id}
@@ -701,7 +675,10 @@ function Stat({ label, value, hint, warn }) {
 function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, error }) {
   const t = useT();
   const { lang } = useI18n();
+  // «12 окт.» — общая дверь формата (`formatDayMonth` за `fmtDate`), не своя копия.
+  const { fmtDate } = useI18nFormat();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
+  const cityNums = visitNumbers(cities);
   const autoTitle = computeAutoTitle(home, cities, t);
   // Экран успеха живёт не здесь, а развилкой по `savedOk` в теле панели
   // ManualPlanner (TRIP-520): он терминален и не должен зависеть от того, на
@@ -740,12 +717,12 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           <div className="s">
             <Stat
               label={t('event.start')}
-              value={cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}
+              value={cities[0]?.startDate ? fmtDate(cities[0].startDate) : '—'}
               warn={!cities[0]?.startDate ? t('planner.date_required_hint') : null}
             />
           </div>
           <div className="s">
-            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
+            <Stat label={t('planner.duration')} value={`${totalNights} ${pluralize(t, totalNights, 'view.nights', lang)}`} />
           </div>
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
@@ -756,27 +733,26 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity?.city_name ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
-              <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
+              <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('ai_plan.start')}`} muted />
             )}
-            {cities.map((c, i) => {
-              // Финиша-города не бывает: конец маршрута — это отдельный узел
-              // (рисуется ниже) либо его нет вовсе. Город списка всегда город.
-              const isFin = false;
+            {/* Финиша-города не бывает: конец маршрута — отдельный узел (ниже)
+                либо его нет вовсе. Номер — та же `visitNumbers`, что у шага 2
+                и ленты ИИ: пересадка номера не получает, у неё значок переезда. */}
+            {cities.map((c) => {
+              const wp = c.kind === 'waypoint';
+              const stay = wp ? t('tse.layover') : `${c.nights} ${pluralize(t, c.nights, 'view.nights', lang)}`;
               return (
                 <ReviewRow
                   key={c.id}
-                  num={isFin ? undefined : i + 1}
-                  icon={isFin ? 'flag' : undefined}
+                  num={wp ? undefined : cityNums[c.id]}
+                  icon={wp ? 'arrowSwap' : undefined}
                   name={c.city_name}
-                  sub={isFin
-                    ? `${c.country || '-'} · ${t('planner.sub_finish')}`
-                    : `${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
-                  muted={isFin}
+                  sub={`${c.country || '-'} · ${stay}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${fmtDate(c.startDate)}` : ''}`}
                 />
               );
             })}
             {finishCity?.city_name && (
-              <ReviewRow icon="flag" name={finishCity.city_name} sub={`${finishCity.country || ''} · ${t('planner.sub_finish')}`} muted />
+              <ReviewRow icon="flag" name={finishCity.city_name} sub={`${finishCity.country || ''} · ${t('ai_plan.end')}`} muted />
             )}
           </div>
         </div>
@@ -1126,12 +1102,19 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       setNodes(r.nodes);
       setStartDateRaw(r.startDate);
       setTripTitle(r.title);
-      // Ответ бота = его текст + строки «что сделал»/«не смог». Снимка маршрута
-      // в сообщении нет: маршрут в ленте один и живой (`PanelAi`, от `nodes`).
-      setAiMessages((m) => [...m, {
-        id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '',
-        applied: r.applied, rejected: r.rejected,
-      }]);
+      // Ответ бота = его текст. Снимка маршрута в сообщении нет: маршрут в
+      // ленте один и живой (`PanelAi`, от `nodes`).
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '' }]);
+      // Отказ применятора — расхождение с тем, что бот назвал сделанным. Человеку
+      // под чужим текстом его не дописываем (TRIP-527, разбор с Pavel): это
+      // сигнал для нас — в PostHog и в Sentry, с причинами и операциями.
+      if (r.rejected.length) {
+        track('ai_ops_rejected', { reasons: r.rejected.map((x) => `${x.op}:${x.reason}`) });
+        Sentry.captureException(new Error('ai planner: ops rejected by applicator'), {
+          tags: { feature: 'ai_planner' },
+          contexts: { ops: { rejected: r.rejected, count: ops.length } },
+        });
+      }
       // «Далее» открыто, когда в маршруте есть город — независимо от того, был
       // ли последний ответ с операциями или просто разговором.
       const cityCount = cityNodesOf(r.nodes).length;
@@ -1567,7 +1550,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           art="trip-created"
           kind="success"
           title={t('planner.created_title')}
-          body={t('planner.created_desc', { title: tripTitle || autoTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
+          body={t('planner.created_desc', { title: tripTitle || autoTitle, cities: cities.length, citiesWord: pluralize(t, cities.length, 'trip.cities_count', lang), nights: totalNights, nightsWord: pluralize(t, totalNights, 'view.nights', lang) })}
           action={(
             <>
               {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
@@ -1710,9 +1693,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       <ShellSlot name="status">
         {totalNights > 0 && (
           <>
-            <b>{cities.length}</b> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
+            <b>{cities.length}</b> {pluralize(t, cities.length, 'trip.cities_count', lang)}
             <span className="muted-2">·</span>
-            <b>{totalNights}</b> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
+            <b>{totalNights}</b> {pluralize(t, totalNights, 'view.nights', lang)}
           </>
         )}
       </ShellSlot>

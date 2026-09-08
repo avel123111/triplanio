@@ -31,8 +31,24 @@
 import {
   makeNode, insertNode, withNights, recomputeDates, isAnchorNode, cityNodesOf, endOf, refOf,
 } from './routeModel.js';
+import { isYmd } from '../../lib/time.js';
 
 const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', country_code: 'string' };
+
+/** Виды узла, которые модель вправе назвать в `set_route`. Пересадку она не
+ *  выбирает: 0 ночей и есть пересадка (вид выводит `cityNode`). */
+const NODE_KINDS = /** @type {const} */ (['start', 'transit', 'end']);
+
+/**
+ * ★ ФОРМА УЗЛА `set_route` — ОДНО ОБЪЯВЛЕНИЕ, ДАННЫМИ, как и форма операции.
+ * До TRIP-527 она была записана ТРИЖДЫ: предикатом в `fieldOk` (свой список
+ * видов + своя проверка имени), схемой парсера в `opsJsonSchema` (свои
+ * `properties` + свой `required` + свой enum) и словами в `doc`. Из-за этого
+ * переименование типа уронило `nights` ТОЛЬКО во вложенной копии, и поле молча
+ * пропало из схемы, которую видит модель. Теперь копия одна: и предикат, и
+ * схема читают `ROUTE_NODE` тем же движком, что поля операции.
+ */
+const ROUTE_NODE = { kind: 'kind', ...CITY, nights: 'count?' };
 
 /* ⚠️ ОДНО ИМЯ НА ОДИН СМЫСЛ. Поля всех операций лежат в схеме парсера плоско,
    и модель выбирает имя по смыслу, а не по операции: пока дата старта у
@@ -44,6 +60,14 @@ const CITY = { city_name: 'string', city_name_en: 'string', country: 'string?', 
  * Словарь операций. `fields` — форма (тип каждого поля; `?` = необязательное),
  * `city` — операция несёт город и потребляет один резолв, `doc` — строка для
  * промпта. Имена полей города те же, что модель отдавала и раньше.
+ *
+ * Типы: `string` (непустая строка), `date` (`YYYY-MM-DD` + реальная дата),
+ * `count` (ЦЕЛОЕ ≥ 0 — число ночей), `ref` (ссылка на узел), `kind` (вид узла),
+ * `nodes` (список узлов формы `ROUTE_NODE`). Имя типа называет СВОЙ смысл и
+ * ничей больше: у бэка свой словарь (`FieldSpec`), общего кода с ним нет —
+ * `edge` не импортирует из `src/`, — и одинаковое слово поверх разных
+ * предикатов создаёт видимость связи вместо связи (замер: под общим именем
+ * `number` фронтовое «целое ≥ 0» и бэковое «любое число» разъезжались молча).
  * @type {Record<string, { fields: Record<string, string>, city?: boolean, doc: string }>}
  */
 export const OPS = {
@@ -52,7 +76,7 @@ export const OPS = {
     doc: 'set_route — построить маршрут с нуля. ТОЛЬКО когда в драфте нет ни одного города. nodes: список {kind: start|transit|end, city_name, city_name_en, country, country_code, nights}. У start/end ночей нет.',
   },
   add_city: {
-    fields: { ...CITY, nights: 'int?', after: 'ref?' },
+    fields: { ...CITY, nights: 'count?', after: 'ref?' },
     city: true,
     doc: 'add_city — добавить город. nights по умолчанию 3; after: ref узла, после которого вставить (без after — в конец, перед финишем).',
   },
@@ -70,7 +94,7 @@ export const OPS = {
     doc: 'move_city — переставить город после узла after; без after — в начало маршрута.',
   },
   set_nights: {
-    fields: { ref: 'ref', nights: 'int' },
+    fields: { ref: 'ref', nights: 'count' },
     doc: 'set_nights — задать число ночей в городе (0 = проездом, пересадка).',
   },
   set_start: {
@@ -97,7 +121,12 @@ export const OPS = {
   },
 };
 
-/** Причины отказа — фиксированный набор, у каждой своя строка перевода. */
+/**
+ * Причины отказа — фиксированный набор. Человеку они больше не показываются
+ * (строк `ai_plan.fail_*` нет с TRIP-527: дописывать отказ под чужим текстом
+ * бота нечестно) — причина уезжает в телеметрию вызывателя, где по ней и видно
+ * расхождение «бот сказал, что сделал» ↔ «применятор не смог».
+ */
 export const REASONS = /** @type {const} */ ({
   unknown_op: 'unknown_op',
   bad_shape: 'bad_shape',
@@ -107,11 +136,16 @@ export const REASONS = /** @type {const} */ ({
   anchor: 'anchor',
 });
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const isDate = (v) => typeof v === 'string' && DATE_RE.test(v) && !Number.isNaN(Date.parse(v));
-const isInt = (v) => Number.isInteger(v) && v >= 0;
+const isDate = (v) => isYmd(v) && !Number.isNaN(Date.parse(v));
+// `count` — число ночей: целое и неотрицательное (дробных ночей не бывает).
+const isCount = (v) => Number.isInteger(v) && v >= 0;
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isRef = (v) => typeof v === 'string' || typeof v === 'number';
+
+/** Каждое поле объявления `shape` — тем же `fieldOk`. Аналог `validateEach`
+ *  шва записи: вложенный объект проверяется движком, а не копией правил. */
+const shapeOk = (shape, o) => !!o && typeof o === 'object'
+  && Object.entries(shape).every(([name, type]) => fieldOk(type, o[name]));
 
 /** Проверка одного поля по типу словаря. */
 function fieldOk(type, v) {
@@ -120,9 +154,10 @@ function fieldOk(type, v) {
   if (v == null || v === '') return optional;
   if (t === 'string') return isStr(v);
   if (t === 'date') return isDate(v);
-  if (t === 'int') return isInt(v);
+  if (t === 'count') return isCount(v);
   if (t === 'ref') return isRef(v);
-  if (t === 'nodes') return Array.isArray(v) && v.every((n) => n && isStr(n.city_name) && ['start', 'transit', 'end'].includes(n.kind));
+  if (t === 'kind') return NODE_KINDS.includes(v);
+  if (t === 'nodes') return Array.isArray(v) && v.every((n) => shapeOk(ROUTE_NODE, n));
   return false;
 }
 
@@ -184,12 +219,19 @@ function insertAfter(nodes, idx, node) {
 /**
  * Применить операции к черновику.
  *
+ * ★ `applied`/`rejected` — ПРОТОКОЛ ДЛЯ ТЕЛЕМЕТРИИ, не материал для текста.
+ * Обе записи несут ровно имя операции (у отказа ещё причину): с TRIP-527 строк
+ * «сделал / не смог» под ответом бота нет, и единственные читатели — счётчики
+ * `ai_plan_returned` и конверт Sentry. Подробности («после какого города
+ * вставлено», «с чего на что заменено») здесь не собираются: их правда — это
+ * `nodes`, а вторая, словесная копия того же факта разъезжается молча.
+ *
  * @param {{ nodes: any[], startDate: string, title: string }} state
  * @param {any[]} ops
  * @param {{ cities?: any[], today: string }} ctx  `cities` выровнены с `citiesInOps(ops)`;
  *   `today` — YYYY-MM-DD, порог для дат (передаётся снаружи ради тестов).
  * @returns {{ nodes: any[], startDate: string, title: string,
- *             applied: Array<Record<string, any>>, rejected: Array<{ op: string, reason: string }> }}
+ *             applied: Array<{ op: string }>, rejected: Array<{ op: string, reason: string }> }}
  */
 export function applyOps(state, ops, { cities = [], today }) {
   let nodes = (state.nodes || []).slice();
@@ -199,6 +241,9 @@ export function applyOps(state, ops, { cities = [], today }) {
   let ci = 0; // курсор по резолвленным городам — тот же порядок, что у citiesInOps
   const nextCity = (raw) => cities[ci++] || pickCity(raw);
   const reject = (op, reason) => rejected.push({ op: op?.op || '?', reason });
+  // Имя операции берём у САМОЙ операции: `switch` уже разобрал `op.op`, и второй
+  // литерал рядом с меткой `case` — та же строка, написанная дважды.
+  const apply = (op) => applied.push({ op: op.op });
 
   for (const op of ops || []) {
     const shape = opShapeError(op);
@@ -211,14 +256,12 @@ export function applyOps(state, ops, { cities = [], today }) {
         const resolved = op.nodes.map((n) => ({ kind: n.kind, nights: n.nights, city: nextCity(n) }));
         if (cityNodesOf(nodes).length > 0) { reject(op, REASONS.route_not_empty); break; }
         let next = [];
-        let count = 0;
         for (const r of resolved) {
           const kind = /** @type {import('./routeModel.js').NodeKind} */ (r.kind);
           const node = kind === 'transit' ? cityNode(r.city, r.nights) : makeNode(r.city, kind);
           const ins = insertNode(next, node);
           if (!ins) continue; // второй якорь молча не заводится (как в редакторе)
           next = ins;
-          if (!isAnchorNode(node)) count++;
         }
         nodes = next;
         if (isStr(op.title)) title = op.title.trim();
@@ -226,7 +269,7 @@ export function applyOps(state, ops, { cities = [], today }) {
           if (op.startDate >= today) startDate = op.startDate;
           else rejected.push({ op: 'set_start_date', reason: REASONS.past_date });
         }
-        applied.push({ op: 'set_route', count });
+        apply(op);
         break;
       }
       case 'add_city': {
@@ -235,16 +278,13 @@ export function applyOps(state, ops, { cities = [], today }) {
         if (op.after != null) {
           const idx = findIdx(nodes, op.after);
           if (idx === -1) { reject(op, REASONS.unknown_ref); break; }
-          // Имя якоря снимаем ДО вставки: при after=финиш вставка ложится ПЕРЕД
-          // ним, и `nodes[idx]` после сплайса — уже новый город. Ставить «после
-          // финиша» нельзя, поэтому такой случай для человека = обычное «добавил».
-          const anchor = nodes[idx].kind === 'end' ? null : nodes[idx].city_name;
+          // `after` = финиш: вставка ложится ПЕРЕД ним — финиш остаётся последним
+          // (правило вставки редактора, `insertAfter` его и держит).
           nodes = insertAfter(nodes, idx, node);
-          applied.push(anchor ? { op: 'add_city', city: city.city_name, after: anchor } : { op: 'add_city', city: city.city_name });
         } else {
           nodes = insertNode(nodes, node) || nodes;
-          applied.push({ op: 'add_city', city: city.city_name });
         }
+        apply(op);
         break;
       }
       case 'replace_city': {
@@ -254,14 +294,14 @@ export function applyOps(state, ops, { cities = [], today }) {
         const old = nodes[idx];
         // Место, id, вид и ночи — прежние; меняется только сам город.
         nodes[idx] = makeNode(city, old.kind, { id: old.id, nights: old.nights ?? undefined });
-        applied.push({ op: 'replace_city', from: old.city_name, to: city.city_name });
+        apply(op);
         break;
       }
       case 'remove_city': {
         const idx = findIdx(nodes, op.ref);
         if (idx === -1) { reject(op, REASONS.unknown_ref); break; }
-        const [gone] = nodes.splice(idx, 1);
-        applied.push({ op: 'remove_city', city: gone.city_name });
+        nodes.splice(idx, 1);
+        apply(op);
         break;
       }
       case 'move_city': {
@@ -278,7 +318,7 @@ export function applyOps(state, ops, { cities = [], today }) {
           const startAt = nodes.findIndex((n) => n.kind === 'start');
           nodes.splice(startAt + 1, 0, node);
         }
-        applied.push({ op: 'move_city', city: node.city_name });
+        apply(op);
         break;
       }
       case 'set_nights': {
@@ -286,7 +326,7 @@ export function applyOps(state, ops, { cities = [], today }) {
         if (idx === -1) { reject(op, REASONS.unknown_ref); break; }
         if (isAnchorNode(nodes[idx])) { reject(op, REASONS.anchor); break; }
         nodes[idx] = withNights(nodes[idx], op.nights);
-        applied.push({ op: 'set_nights', city: nodes[idx].city_name, nights: op.nights });
+        apply(op);
         break;
       }
       case 'set_start':
@@ -296,25 +336,25 @@ export function applyOps(state, ops, { cities = [], today }) {
         const idx = nodes.findIndex((n) => n.kind === kind);
         if (idx === -1) nodes = insertNode(nodes, makeNode(city, kind)) || nodes;
         else nodes[idx] = makeNode(city, kind, { id: nodes[idx].id });
-        applied.push({ op: op.op, city: city.city_name });
+        apply(op);
         break;
       }
       case 'clear_end': {
         const end = endOf(nodes);
         if (!end) { reject(op, REASONS.unknown_ref); break; }
         nodes = nodes.filter((n) => n !== end);
-        applied.push({ op: 'clear_end' });
+        apply(op);
         break;
       }
       case 'set_start_date': {
         if (op.startDate < today) { reject(op, REASONS.past_date); break; }
         startDate = op.startDate;
-        applied.push({ op: 'set_start_date', date: op.startDate });
+        apply(op);
         break;
       }
       case 'set_title': {
         title = op.title.trim();
-        applied.push({ op: 'set_title', title });
+        apply(op);
         break;
       }
       default:
@@ -330,9 +370,20 @@ export function applyOps(state, ops, { cities = [], today }) {
 const JSON_TYPES = {
   string: { type: 'string' },
   date: { type: 'string', description: 'YYYY-MM-DD' },
-  int: { type: 'integer', minimum: 0 },
+  count: { type: 'integer', minimum: 0 },
   ref: { type: 'string' },
+  kind: { type: 'string', enum: [...NODE_KINDS] },
 };
+
+/** Объявление формы → JSON-схема объекта. Обязательность — из отсутствия `?`,
+ *  не из второго списка рядом: разъехаться нечему. */
+const schemaOf = (shape) => ({
+  type: 'object',
+  required: Object.entries(shape).filter(([, t]) => !t.endsWith('?')).map(([name]) => name),
+  properties: Object.fromEntries(
+    Object.entries(shape).map(([name, t]) => [name, JSON_TYPES[t.replace(/\?$/, '')]]),
+  ),
+});
 
 /**
  * JSON-схема ответа модели для Structured Output Parser в n8n — собирается из
@@ -345,20 +396,7 @@ export function opsJsonSchema() {
     for (const [name, type] of Object.entries(spec.fields)) {
       if (props[name]) continue; // одно имя на один смысл: первая операция задаёт форму поля
       const t = type.replace(/\?$/, '');
-      props[name] = t === 'nodes'
-        ? {
-          type: 'array',
-          items: {
-            type: 'object',
-            required: ['kind', 'city_name', 'city_name_en', 'country_code'],
-            properties: {
-              kind: { type: 'string', enum: ['start', 'transit', 'end'] },
-              ...Object.fromEntries(Object.keys(CITY).map((k) => [k, JSON_TYPES.string])),
-              nights: JSON_TYPES.int,
-            },
-          },
-        }
-        : JSON_TYPES[t];
+      props[name] = t === 'nodes' ? { type: 'array', items: schemaOf(ROUTE_NODE) } : JSON_TYPES[t];
     }
   }
   return {

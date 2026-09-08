@@ -224,7 +224,7 @@ import { Badge, Btn, Chip, Card, Skeleton, Tile, PageHead, Tooltip, useToast } f
 import { Row, Trunc } from '../design/Layout';
 import CityAdder from '@/components/cities/CityAdder';
 import { CityAnchorRow } from '@/pages/create/anchors';
-import { isAnchorNode } from '@/pages/create/routeModel';
+import { isAnchorNode, visitNumbers } from '@/pages/create/routeModel';
 import { cityUnderPin } from '@/lib/map/markers';
 import { useTheme } from '@/lib/ThemeContext';
 import EventDrawerHost from '@/components/common/EventDrawerHost';
@@ -955,9 +955,10 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // Drill-версии: открыть ПОВЕРХ текущей панели (город → отель/бронь).
   const drillEvent = (kind, id) => pushPanel(eventDesc(kind, id));
   const drillBooking = (kind, node) => { if (isTmpId(node?.id)) return; pushPanel(bookingDesc(kind, node)); };
-  // Stay numbering (only nights-cities are numbered).
-  const stayNumById = {};
-  { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
+  // Номера городов — ОБЩЕЕ правило модели маршрута (`visitNumbers`), то же, что
+  // у пинов карты, шага 2 и ряда под лентой ИИ. Свой счётчик здесь был вторым
+  // выражением того же правила (TRIP-527).
+  const stayNumById = visitNumbers(ordered);
   // Live preview order, FLIP reorder, keyboard move, pointer-drag arm/move/end and
   // justDraggedRef are all provided by the shared useRouteDnD hook instantiated
   // above (destructured: displayNodes, draggingId, overGap, setRowRef, armDrag,
@@ -1587,7 +1588,7 @@ function GridNode({ showCols = true, readOnly = false, seg, stayNum, cityConf, h
     return (
       <CityRow variant="editor" dragging={rowDrag?.dragging} pressing={rowDrag?.pressing} onArm={rowDrag?.onArm} onClick={onOpenCity}
         grip={gripEl}
-        lead={<Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>}
+        lead={<Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>}
         name={seg.city_name}
         conf={<Conf n={cityConf} />}
         dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>

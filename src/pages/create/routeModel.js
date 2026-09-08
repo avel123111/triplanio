@@ -66,6 +66,38 @@ export const endOf = (nodes) => (nodes || []).find((n) => n.kind === 'end') || n
 /** Города списка для карты и ревью: всё, кроме якорей. */
 export const cityNodesOf = (nodes) => (nodes || []).filter((n) => !isAnchorNode(n));
 
+/**
+ * Номера городов маршрута: `id → номер` (1-based). Считаются ТОЛЬКО города
+ * посещения — якоря и пересадки в карту не попадают, ровно как у пинов карты
+ * (`cityPoints` в `lib/map/markers.js`). Раньше шаг 2 считал по индексу среди
+ * всех неякорей, и после пересадки его цифры расходились с картой
+ * (1, 2, ·, 4 против 1, 2, ·, 3).
+ *
+ * ★ ПРАВИЛО ЗДЕСЬ ОДНО НА ВСЕ ЧЕТЫРЕ ПОВЕРХНОСТИ: шаг 2, ряд маршрута под
+ * лентой ИИ, обзор (шаг 4) и ряд РЕДАКТОРА (`EditLens`, узлы того же словаря
+ * видов). У редактора был свой счётчик по `kind === 'transit'` — тот же смысл
+ * второй реализацией, то есть готовое расхождение при первой же правке правила.
+ *
+ * Отдаёт КАРТУ, а не номер одного узла: все четыре поверхности рисуют СПИСОК, и
+ * функция «номер одного» звалась бы внутри цикла — то есть считала бы весь
+ * маршрут заново на каждый ряд. Карта строится один раз на отрисовку.
+ * ⚠️ Предикат — «не якорь и не пересадка», а не `kind === 'transit'`: у
+ * `city_visits.kind` есть DEFAULT, но нет NOT NULL, и на строке с `kind IS NULL`
+ * счётчик редактора номера не давал, а пин карты (`cityPoints`, тот же
+ * исключающий предикат) давал — ряд и карта расходились.
+ * @param {RouteNode[]} nodes
+ * @returns {Record<string, number>}
+ */
+export function visitNumbers(nodes) {
+  /** @type {Record<string, number>} */
+  const out = {};
+  let n = 0;
+  for (const node of nodes || []) {
+    if (!isAnchorNode(node) && node.kind !== 'waypoint') out[String(node.id)] = ++n;
+  }
+  return out;
+}
+
 /** Финиш ВЫБРАН — то есть в списке есть узел `end`. Формы у него одна, поэтому
  *  и вывода никакого: «где финиш» = `endOf(nodes)`. Второго ответа не бывает. */
 export const hasExplicitEnd = (nodes) => !!endOf(nodes);
@@ -186,7 +218,7 @@ export const refOf = (node) => String(node?.id);
  */
 export function toDraftPayload(nodes, startDate, title) {
   return {
-    startDate: startDate || '',
+    startDate: startDate || null,
     title: title || '',
     nodes: (nodes || []).filter((n) => n.city_name).map((n) => ({
       ref: refOf(n),
