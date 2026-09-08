@@ -1,0 +1,21 @@
+-- TRIP-524 follow-up — gaz_by_ids исполнима только `authenticated` (ярус D, authExec).
+--
+-- Баг: в 20260908124528 после `create function` стояло
+--   revoke all on function public.gaz_by_ids(...) from public;
+--   grant execute on function public.gaz_by_ids(...) to authenticated;
+-- Первая строка — no-op. Supabase через `ALTER DEFAULT PRIVILEGES` выдаёт EXECUTE
+-- новым функциям в схеме public НАПРЯМУЮ ролям anon/authenticated (а не через
+-- PUBLIC), поэтому сразу после create гранты висят на самих ролях, и REVOKE
+-- FROM PUBLIC их не снимает. ACL приехал как
+--   {postgres=X, anon=X, authenticated=X, service_role=X}
+-- то есть функция осталась исполнима anon → LIVE-страж ярусов
+-- (check-security-tiers.mjs) уронил деплой: «secdef gaz_by_ids исполнима anon
+-- (authExec ожидает только authenticated)».
+--
+-- ЭТО ТРЕТИЙ РАЗ ОДНИ И ТЕ ЖЕ ГРАБЛИ: TRIP-49 (revoke FROM anon при гранте на
+-- PUBLIC) и TRIP-226 (`gaz_project`, 20260722220031) — тот же корень «цель
+-- REVOKE ≠ цель GRANT». Идиома для новой secdef-функции в Supabase — снимать
+-- И у public, И у ролей, а потом выдавать нужной:
+--   revoke all on function <f> from public, anon, authenticated;
+--   grant execute on function <f> to authenticated;  -- если клиенту она нужна
+revoke all on function public.gaz_by_ids(bigint[], text) from anon;
