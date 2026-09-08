@@ -6662,7 +6662,7 @@ button.input[data-empty] { color: var(--muted-2); }
     .te-row__node { --tile: 28px; flex-shrink: 0; }
     /* Узел пересадки: тон `transfer` плитки, но не заливкой, а пунктирным
        контуром — форма «точка без ночёвки». Одно правило вместо инлайна на
-       вызывателях (TRIP-282); первый носитель — маршрут под лентой ИИ.
+       вызывателях (TRIP-282); носители: шаг 2, маршрут под лентой ИИ, EditLens.
        visual-diff-exempt: .te-row__node background — пунктирный узел пересадки: значение из инлайна вызывателей, класс общий
        visual-diff-exempt: .te-row__node border — то же, инлайн → правило на союзе .te-row__node.tile--transfer
        visual-diff-exempt: .te-row__node color — то же
