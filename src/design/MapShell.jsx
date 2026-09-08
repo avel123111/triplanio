@@ -190,10 +190,13 @@ export function MapShell({
   // это отдаётся коробками `null` в `view` — она ничего не трогает; замер приезжает
   // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
   // ставится без движения.
-  // Правый край КОЛОНОК от края холста — уже вместе с полосой хоста слева (см.
-  // `measureCols`). Левее панели закрыто НЕ панелью (рейл трипа над холстом), и
-  // это остаётся закрытым, когда панель свёрнута (`offsetPx`).
-  const [panelPx, setPanelPx] = useState(/** @type {number | null} */ (null));
+  // ШИРИНА КОЛОНОК — замером (см. `measureCols`), ПОЛОЖЕНИЕ — числом от хоста:
+  // полоса слева задана панели через `left` и анимируется, замер прочитал бы её
+  // на полпути. Их сумма и есть правый край колонок от края холста. Левее
+  // панели закрыто НЕ панелью (рейл трипа над холстом), и это остаётся
+  // закрытым, когда панель свёрнута (`offsetPx`).
+  const [colsPx, setColsPx] = useState(/** @type {number | null} */ (null));
+  const panelPx = colsPx === null ? null : insetLeft + colsPx;
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -228,16 +231,24 @@ export function MapShell({
   // координатах РАСКЛАДКИ (`offsetLeft + offsetWidth`, offsetParent = сам
   // шелл): свёрнутая панель уезжает `transform`-ом, а он на них не влияет —
   // `getBoundingClientRect().right` уехал бы вместе с ней и отдал бы карте
-  // ложную полосу на все 320 мс анимации. Полоса хоста слева (рейл) входит сюда
-  // сама: панель стоит на `left: var(--mapshell-inset-left)`.
+  // ложную полосу на все 320 мс анимации.
+  //
+  // ★ ПОЛОСА ХОСТА СЛЕВА (РЕЙЛ) В ЗАМЕР НЕ ВХОДИТ — ОНА ПРИХОДИТ ЧИСЛОМ. Она
+  // задана панели через `left` и АНИМИРУЕТСЯ (визард → трип, 0 → ширина рейла):
+  // замер прочитал бы её на полпути, а перезапустить его было бы нечему —
+  // ResizeObserver видит РАЗМЕР, а не позицию, и при неизменной ширине панели
+  // молчит. Поэтому меряем ШИРИНУ колонок (правый край минус левый край
+  // панели), а полосу хоста прибавляет `panelPx` тем же рендером, что её
+  // получил.
   const measureCols = useCallback(() => {
     const rightEdge = (/** @type {HTMLElement | null} */ el) => (el ? el.offsetLeft + el.offsetWidth : 0);
-    const px = Math.max(rightEdge(panelRef.current), rightEdge(asideRef.current));
-    setPanelPx(Math.max(0, Math.round(px)));
+    const left = panelRef.current ? panelRef.current.offsetLeft : 0;
+    const px = Math.max(rightEdge(panelRef.current), rightEdge(asideRef.current)) - left;
+    setColsPx(Math.max(0, Math.round(px)));
   }, []);
 
   useLayoutEffect(() => {
-    if (isPhone) { setPanelPx(0); return undefined; }
+    if (isPhone) { setColsPx(0); return undefined; }
     measureCols();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measureCols) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);
