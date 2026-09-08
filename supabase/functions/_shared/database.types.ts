@@ -98,6 +98,7 @@ export type Database = {
           cost_usd: number | null
           created_at: string
           duration_ms: number | null
+          env: string | null
           execution_id: string | null
           id: string
           metrics: Json | null
@@ -126,6 +127,7 @@ export type Database = {
           cost_usd?: number | null
           created_at?: string
           duration_ms?: number | null
+          env?: string | null
           execution_id?: string | null
           id?: string
           metrics?: Json | null
@@ -154,6 +156,7 @@ export type Database = {
           cost_usd?: number | null
           created_at?: string
           duration_ms?: number | null
+          env?: string | null
           execution_id?: string | null
           id?: string
           metrics?: Json | null
