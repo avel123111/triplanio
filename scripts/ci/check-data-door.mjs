@@ -50,7 +50,7 @@
  * РАТЧЕТ (не растут; цель — в колонке `target`):
  *   rpcMutating   мутирующие RPC с клиента            → 0
  *   rpcReading    читающие RPC с клиента              → 0
- *   rpcGazetteer  газеттир (публичный поиск)          → 3, остаётся клиентским
+ *   rpcGazetteer  газеттир (публичный поиск+ключ)     → 4, остаётся клиентским
  *   writes        прямые записи, таблица литералом    → 0
  *   writesVar     прямые записи, таблица переменной   → 0
  *   reads         прямые чтения, таблица литералом    → 0
@@ -192,7 +192,11 @@ const RPC = {
   rpcReading: ['get_user_travel_stats'],
   // Публичный поиск: отказывать нечего, неоднозначности «пусто vs нельзя» не
   // существует, дёргается на каждое нажатие клавиши. Остаётся клиентским (§4.B).
-  rpcGazetteer: ['search_gazetteer', 'search_gazetteer_batch', 'nearest_cities'],
+  // `gaz_by_ids` (TRIP-524) — тот же справочник той же ступени, только вход по
+  // КЛЮЧУ вместо имени: ИИ-планировщик выбрал город инструментом и вернул
+  // `geonameid`, ранжировать больше нечего. Четвёртая дверь того же ящика, а не
+  // новое исключение из §4.B — поэтому цель ниже 3 → 4, а не обход маркером.
+  rpcGazetteer: ['search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', 'gaz_by_ids'],
 };
 
 /** Записи, чья ошибка НИКОГДА не показывается пользователю (критерий границы
@@ -210,7 +214,7 @@ const WRITE_OPS = new Set(['insert', 'update', 'upsert', 'delete']);
 const METRICS = [
   { key: 'rpcMutating', label: 'мутирующих RPC с клиента', target: 0 },
   { key: 'rpcReading', label: 'читающих RPC с клиента', target: 0 },
-  { key: 'rpcGazetteer', label: 'RPC газеттира (остаются)', target: 3 },
+  { key: 'rpcGazetteer', label: 'RPC газеттира (остаются)', target: 4 },
   { key: 'writes', label: 'прямых записей (таблица литералом)', target: 0 },
   { key: 'writesVar', label: 'прямых записей через переменную', target: 0 },
   { key: 'reads', label: 'прямых чтений (таблица литералом)', target: 0 },

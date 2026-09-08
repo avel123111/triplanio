@@ -56,6 +56,29 @@ export async function resolveCities(items, lang) {
   return expandBatchRows(data, items.length, lk);
 }
 
+// door-exempt: rpcGazetteer +1 — четвёртая дверь ТОГО ЖЕ справочника (вход по
+// ключу вместо имени), §4.B эпика TRIP-374 её и разрешает; цель гарда 2r поднята
+// 3 → 4 в том же PR. ⚠️ ЦЕЛЬ ЭПИКА МЕНЯЕТСЯ — нужен апрув Pavel (мерж PR = апрув).
+// Gazetteer rows BY KEY (TRIP-524) — `gaz_by_ids`, not a search.
+//
+// The AI planner may already have picked the city itself: with the
+// `gazetteerSearch` tool it sees the candidates (region, population, coords),
+// chooses the one that fits its route and hands back the `geonameid`. Once the
+// key is known there is nothing left to rank, so this door does no matching at
+// all — it projects the rows through the same `gaz_project`/`mapGazCity` shape a
+// search returns, so a keyed city behaves exactly like a searched one downstream.
+//
+// Returns rows for the ids that EXIST, in input order — an unknown id simply has
+// no row (callers key the result by `geonameid`; positional alignment would be a
+// lie the moment one id is missing). [] on error, like the other doors.
+export async function citiesByIds(ids, lang) {
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  const lk = normLang(lang);
+  const { data, error } = await supabase.rpc('gaz_by_ids', { _ids: ids, _lang: lk });
+  if (error) { report(error, { surface: 'data', source: 'gazetteer_by_ids' }); return []; }
+  return (data || []).map((g) => mapGazCity(g, lk));
+}
+
 // Reverse geocode lat/lon → the nearest gazetteer cities (TRIP-226, inhouse).
 // Resolves coordinates to the `lim` closest cities in OUR GeoNames gazetteer
 // (RPC nearest_cities), NOT LocationIQ. Each candidate is a full gazetteer city

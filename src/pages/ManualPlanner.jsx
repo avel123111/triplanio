@@ -13,7 +13,7 @@ import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { resolveCities, nearbyCities } from '@/lib/geo';
+import { resolveCities, citiesByIds, nearbyCities } from '@/lib/geo';
 import { haversineKm } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, Country, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
@@ -1052,17 +1052,41 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      город (ИИ назвал, справочник не нашёл) остаётся без таймзоны и координат,
      как при ручном вводе, и краснеет на шаге 2 — а не получает выдуманный UTC. */
 
-  // Города из операций → ОДИН батч газеттира (TRIP-214), в порядке потребления
+  // Города из операций → ОДИН заход в газеттир, в порядке потребления
   // применятором (`citiesInOps` и `applyOps` обходят операции одинаково, это
   // запинено тестом). Не нашёлся — `null`, применятор возьмёт имя из операции.
+  //
+  // ★ ДВЕ ДОРОГИ, И ЭТО НЕ ДУБЛЬ: у города МОЖЕТ БЫТЬ КЛЮЧ (TRIP-524). Модель
+  // ходит в справочник инструментом, ВИДИТ кандидатов вместе с регионом и
+  // населением и выбирает того, кто вяжется с соседями по маршруту, — выбор по
+  // контексту резолверу недоступен по построению (он видит одно имя и страну,
+  // без маршрута). Поэтому ключ = готовый ответ, и город с ключом идёт `gaz_by_ids`
+  // БЕЗ поиска и ранжирования; поиском (TRIP-214/159) идут только города без
+  // ключа. Пока инструмент не подключён, ключей нет и дорога ровно одна — старая.
   const resolveOpCities = async (ops) => {
     const want = citiesInOps(ops);
     if (want.length === 0) return [];
-    const lists = await resolveCities(
-      want.map((c) => ({ city_name: c.city_name, name_en: c.city_name_en, country: c.country, country_code: c.country_code })),
-      lang || 'ru',
+    const lk = lang || 'ru';
+    const ids = [...new Set(want.map((c) => c.geonameid).filter(Boolean))];
+    // Ключ есть, а строки нет (ключ выдуман) — города в карте не будет, и он
+    // честно уйдёт в поиск по имени вместе с остальными.
+    const byId = new Map(
+      (ids.length ? await citiesByIds(ids, lk) : []).map((r) => [Number(r.geonameid), r]),
     );
-    return want.map((c, i) => (lists[i]?.[0] ? shapeAiCity(c, i, lists[i][0]) : null));
+    const search = want.map((c, i) => (byId.has(c.geonameid) ? -1 : i)).filter((i) => i >= 0);
+    const lists = search.length
+      ? await resolveCities(
+        search.map((i) => ({
+          city_name: want[i].city_name, name_en: want[i].city_name_en, country: want[i].country, country_code: want[i].country_code,
+        })),
+        lk,
+      )
+      : [];
+    const found = new Map(search.map((i, k) => [i, lists[k]?.[0] || null]));
+    return want.map((c, i) => {
+      const best = byId.get(c.geonameid) || found.get(i);
+      return best ? shapeAiCity(c, i, best) : null;
+    });
   };
 
   const planMut = useMutation({
