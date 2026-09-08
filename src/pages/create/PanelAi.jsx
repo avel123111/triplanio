@@ -6,7 +6,7 @@ import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { pluralize } from '@/lib/i18n/format';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { startOf, endOf, cityNodesOf, visitNumberOf } from '@/pages/create/routeModel';
+import { startOf, endOf, cityNodesOf, visitNumbers } from '@/pages/create/routeModel';
 import { addDays, cityDateRange } from '@/lib/tripDates';
 
 // =====================================================================
@@ -67,6 +67,7 @@ function DraftItinerary({ nodes }) {
   const { fmtDate } = useI18nFormat();
   const home = startOf(nodes);
   const cities = cityNodesOf(nodes);
+  const cityNums = visitNumbers(nodes);
   const end = endOf(nodes);
   if (!home?.city_name && cities.length === 0 && !end?.city_name) return null;
   const first = cities[0];
@@ -87,7 +88,7 @@ function DraftItinerary({ nodes }) {
         const invalid = !!c.city_name && c.latitude == null;
         const lead = isWaypoint
           ? <Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>
-          : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{visitNumberOf(nodes, c)}</Tile>;
+          : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{cityNums[c.id]}</Tile>;
         return (
           <RouteRow
             key={c.id}

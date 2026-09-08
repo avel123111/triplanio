@@ -36,7 +36,7 @@ import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import {
   startOf, endOf, cityNodesOf, hasExplicitEnd, isAnchorNode,
-  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode, visitNumberOf,
+  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode, visitNumbers,
 } from '@/pages/create/routeModel';
 import { applyOps, citiesInOps } from '@/pages/create/aiOps';
 import { useRouteDnD } from '@/lib/useRouteDnD';
@@ -402,6 +402,9 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
      Старт городом не является: из него выезжают, в нём не ночуют. */
   const hasCities = cityNodesOf(nodes).length > 0;
   const hasEnd = hasExplicitEnd(nodes);
+  // Номера — ОДНОЙ картой на отрисовку (правило общее с лентой ИИ, обзором и
+  // редактором); по ЗАФИКСИРОВАННОМУ порядку, не по превью перетаскивания.
+  const cityNums = visitNumbers(nodes);
 
   return (
     <div>
@@ -469,9 +472,9 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
               <CityRow
                 /* Номер считается по ЗАФИКСИРОВАННОМУ порядку (`nodes`), а не по
                    превью перетаскивания (`displayNodes`) — иначе цифры прыгали бы
-                   под пальцем. Правило одно с картой и лентой ИИ (`visitNumberOf`:
+                   под пальцем. Правило одно с картой и лентой ИИ (`visitNumbers`:
                    якоря и пересадки номера не получают). */
-                num={visitNumberOf(nodes, n)}
+                num={cityNums[n.id]}
                 node={n}
                 isDragging={draggingId === n.id}
                 isPressing={pressingId === n.id}
@@ -675,6 +678,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
   // «12 окт.» — общая дверь формата (`formatDayMonth` за `fmtDate`), не своя копия.
   const { fmtDate } = useI18nFormat();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
+  const cityNums = visitNumbers(cities);
   const autoTitle = computeAutoTitle(home, cities, t);
   // Экран успеха живёт не здесь, а развилкой по `savedOk` в теле панели
   // ManualPlanner (TRIP-520): он терминален и не должен зависеть от того, на
@@ -732,7 +736,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('ai_plan.start')}`} muted />
             )}
             {/* Финиша-города не бывает: конец маршрута — отдельный узел (ниже)
-                либо его нет вовсе. Номер — тот же `visitNumberOf`, что у шага 2
+                либо его нет вовсе. Номер — та же `visitNumbers`, что у шага 2
                 и ленты ИИ: пересадка номера не получает, у неё значок переезда. */}
             {cities.map((c) => {
               const wp = c.kind === 'waypoint';
@@ -740,7 +744,7 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
               return (
                 <ReviewRow
                   key={c.id}
-                  num={wp ? undefined : visitNumberOf(cities, c)}
+                  num={wp ? undefined : cityNums[c.id]}
                   icon={wp ? 'arrowSwap' : undefined}
                   name={c.city_name}
                   sub={`${c.country || '-'} · ${stay}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${fmtDate(c.startDate)}` : ''}`}

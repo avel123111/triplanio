@@ -265,11 +265,33 @@ test('★ одно имя на один смысл: дата старта у set
   assert.equal(opShapeError({ op: 'set_start_date', startDate: '2026-10-16' }), null);
 });
 
-test('★ схема парсера: у узла set_route есть nights (вложенная копия не отстаёт от словаря типов)', () => {
-  // Увидено красным: переименование JSON_TYPES.int → number оставило вложенного
-  // читателя, и `nights` молча выпадал из схемы (undefined не сериализуется).
-  const item = opsJsonSchema().properties.ops.items;
-  assert.deepEqual(item.properties.nodes.items.properties.nights, { type: 'integer', minimum: 0 });
+test('★★ форма узла set_route объявлена ОДИН раз: предикат и схема читают одно объявление', () => {
+  // Копий было ТРИ (предикат `fieldOk`, вложенная схема, слова `doc`), и потому
+  // переименование типа уронило `nights` только в схеме — поле молча пропало у
+  // модели. Тест связывает две машинные копии: что схема объявила обязательным,
+  // то предикат обязан требовать, и наоборот.
+  const node = opsJsonSchema().properties.ops.items.properties.nodes.items;
+  const full = { kind: 'transit', city_name: 'Рим', city_name_en: 'Rome', country: 'Италия', country_code: 'IT', nights: 2 };
+  assert.equal(opShapeError({ op: 'set_route', nodes: [full] }), null, 'полный узел проходит');
+  for (const req of node.required) {
+    const one = { ...full }; delete one[req];
+    assert.equal(opShapeError({ op: 'set_route', nodes: [one] }), REASONS.bad_shape, `схема требует ${req}, предикат — нет`);
+  }
+  assert.deepEqual(node.properties.nights, { type: 'integer', minimum: 0 }, 'ночи = целое ≥ 0');
+  assert.equal(opShapeError({ op: 'set_route', nodes: [{ ...full, nights: 2.5 }] }), REASONS.bad_shape, 'дробных ночей не бывает');
+  assert.deepEqual(node.properties.kind.enum, ['start', 'transit', 'end'], 'виды — один список');
+  assert.equal(opShapeError({ op: 'set_route', nodes: [{ ...full, kind: 'waypoint' }] }), REASONS.bad_shape, 'пересадку модель не выбирает: её выводят ночи');
+});
+
+test('★ схема парсера покрывает КАЖДЫЙ тип словаря: забытый читатель типа = поле-дыра', () => {
+  // `undefined` не сериализуется, поэтому поле с неизвестным типом исчезает из
+  // схемы МОЛЧА — ровно так и пропали ночи при переименовании типа.
+  const items = opsJsonSchema().properties.ops.items;
+  const noHoles = (props, where) => {
+    for (const [name, v] of Object.entries(props)) assert.ok(v && v.type, `${where}.${name} без типа: JSON_TYPES не знает такого имени`);
+  };
+  noHoles(items.properties, 'op');
+  noHoles(items.properties.nodes.items.properties, 'op.nodes[]');
 });
 
 test('у каждой операции есть строка для промпта, и форма проверяется словарём', () => {

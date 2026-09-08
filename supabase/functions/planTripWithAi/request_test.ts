@@ -27,6 +27,13 @@ Deno.test('★ потолок реплики = домен long_text: 10000 пр�
   assertEquals(refused(normalizeRequest(body({ prompt: 'a'.repeat(MAX_PROMPT + 1) }))), { status: 400, code: 'INVALID_INPUT' });
 });
 
+Deno.test('язык необязателен и может быть null — реплика проходит (границу не ужесточаем зря)', () => {
+  assertEquals(isRefusal(normalizeRequest(body())), false, 'без языка');
+  assertEquals(isRefusal(normalizeRequest(body({ language: null }))), false, 'язык null');
+  assertEquals(isRefusal(normalizeRequest(body({ language: 'sr-Latn' }))), false, 'BCP-47 с подтегом');
+  assertEquals(refused(normalizeRequest(body({ language: 'ru-RU-x-toolong' }))), { status: 400, code: 'INVALID_INPUT' });
+});
+
 Deno.test('★ отказ — контракт общего шва, а не свой: нет/пустой prompt, кривой sessionId', () => {
   assertEquals(refused(normalizeRequest({ sessionId: SID })), { status: 400, code: 'INVALID_INPUT' });
   assertEquals(refused(normalizeRequest(body({ prompt: '   ' }))), { status: 400, code: 'INVALID_INPUT' }, 'пробелы — не реплика');
