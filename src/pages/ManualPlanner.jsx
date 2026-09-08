@@ -1052,9 +1052,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
      город (ИИ назвал, справочник не нашёл) остаётся без таймзоны и координат,
      как при ручном вводе, и краснеет на шаге 2 — а не получает выдуманный UTC. */
 
-  // Города из операций → ОДИН заход в газеттир, в порядке потребления
-  // применятором (`citiesInOps` и `applyOps` обходят операции одинаково, это
-  // запинено тестом). Не нашёлся — `null`, применятор возьмёт имя из операции.
+  // Города из операций → газеттир ОДНИМ заходом на дорогу (дорог две, см. ниже;
+  // в частом случае работает одна), в порядке потребления применятором
+  // (`citiesInOps` и `applyOps` обходят операции одинаково, это запинено тестом).
+  // Не нашёлся — `null`, применятор возьмёт имя из операции.
   //
   // ★ ДВЕ ДОРОГИ, И ЭТО НЕ ДУБЛЬ: у города МОЖЕТ БЫТЬ КЛЮЧ (TRIP-524). Модель
   // ходит в справочник инструментом, ВИДИТ кандидатов вместе с регионом и
@@ -1067,24 +1068,24 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const want = citiesInOps(ops);
     if (want.length === 0) return [];
     const lk = lang || 'ru';
+
+    // Дорога ключа. Пустой список в справочник не едет — это забота самой двери,
+    // поэтому пока ключей нет, заход остаётся ровно один, поисковый.
     const ids = [...new Set(want.map((c) => c.geonameid).filter(Boolean))];
-    // Ключ есть, а строки нет (ключ выдуман) — города в карте не будет, и он
-    // честно уйдёт в поиск по имени вместе с остальными.
-    const byId = new Map(
-      (ids.length ? await citiesByIds(ids, lk) : []).map((r) => [Number(r.geonameid), r]),
-    );
-    const search = want.map((c, i) => (byId.has(c.geonameid) ? -1 : i)).filter((i) => i >= 0);
-    const lists = search.length
-      ? await resolveCities(
-        search.map((i) => ({
-          city_name: want[i].city_name, name_en: want[i].city_name_en, country: want[i].country, country_code: want[i].country_code,
-        })),
-        lk,
-      )
-      : [];
-    const found = new Map(search.map((i, k) => [i, lists[k]?.[0] || null]));
+    const byKey = new Map((await citiesByIds(ids, lk)).map((r) => [Number(r.geonameid), r]));
+
+    // Дорога поиска: города без ключа И с ключом, которого в справочнике не
+    // оказалось (модель его выдумала) — одним батчем, как раньше. Форму города
+    // дверь читает как есть (`city_name` + `city_name_en`), пересобирать нечего.
+    const rest = want.filter((c) => !byKey.has(c.geonameid));
+    const lists = await resolveCities(rest, lk);
+
+    // Курсор по ответу поиска: `rest` идёт в порядке `want`, и кого туда взяли,
+    // решает ТОТ ЖЕ предикат `byKey.has` — разъедься эти два условия, города
+    // молча съехали бы на соседей.
+    let k = 0;
     return want.map((c, i) => {
-      const best = byId.get(c.geonameid) || found.get(i);
+      const best = byKey.has(c.geonameid) ? byKey.get(c.geonameid) : lists[k++]?.[0];
       return best ? shapeAiCity(c, i, best) : null;
     });
   };

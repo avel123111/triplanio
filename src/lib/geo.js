@@ -59,6 +59,7 @@ export async function resolveCities(items, lang) {
 // door-exempt: rpcGazetteer +1 — четвёртая дверь ТОГО ЖЕ справочника (вход по
 // ключу вместо имени), §4.B эпика TRIP-374 её и разрешает; цель гарда 2r поднята
 // 3 → 4 в том же PR. ⚠️ ЦЕЛЬ ЭПИКА МЕНЯЕТСЯ — нужен апрув Pavel (мерж PR = апрув).
+//
 // Gazetteer rows BY KEY (TRIP-524) — `gaz_by_ids`, not a search.
 //
 // The AI planner may already have picked the city itself: with the
@@ -68,9 +69,10 @@ export async function resolveCities(items, lang) {
 // all — it projects the rows through the same `gaz_project`/`mapGazCity` shape a
 // search returns, so a keyed city behaves exactly like a searched one downstream.
 //
-// Returns rows for the ids that EXIST, in input order — an unknown id simply has
-// no row (callers key the result by `geonameid`; positional alignment would be a
-// lie the moment one id is missing). [] on error, like the other doors.
+// Returns rows for the ids that EXIST, in input order, capped at the RPC's 200 —
+// an unknown (or over-the-cap) id simply has no row, so the caller keys the result
+// by `geonameid` and searches by name for the rest; positional alignment would be
+// a lie the moment one id is missing. [] on error, like the other doors.
 export async function citiesByIds(ids, lang) {
   if (!Array.isArray(ids) || ids.length === 0) return [];
   const lk = normLang(lang);
