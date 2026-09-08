@@ -34,6 +34,14 @@ const PATTERNS = [
   { re: /\bDROP\s+NOT\s+NULL\b/i, label: 'DROP NOT NULL' },
   { re: /\bRENAME\b/i, label: 'RENAME' }, // ALTER ... RENAME [COLUMN] ... TO ...
   { re: /\bALTER\s+\w[\w".]*\s+.*\bDROP\b/i, label: 'ALTER ... DROP' }, // drop constraint/default/column
+  // DROP FUNCTION — снос ДВЕРИ, а не колонки, и потому не менее разрушителен:
+  // функция `public.*` выставлена наружу через PostgREST, её зовут фронт, edge и
+  // тела других функций, и снос ломает их молча (404 на RPC, а не ошибка сборки).
+  // Дырка найдена на TRIP-524: миграция дропала перегрузку `search_gazetteer_batch`
+  // ради нового параметра, автор поставил маркер по совести — а гард на неё не
+  // реагировал вовсе, то есть маркер был декорацией. Законная фаза (снос+создание
+  // в одной транзакции, как там) проходит ровно так же — с маркером, видимым в ревью.
+  { re: /\bDROP\s+FUNCTION\b/i, label: 'DROP FUNCTION' },
 ];
 
 function git(args) {

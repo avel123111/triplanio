@@ -177,6 +177,7 @@ export const FUNCTIONS = {
   // EXECUTE снят у anon/authenticated/PUBLIC → internal (IF3).
   publicExec: ['is_trip_participant', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
+    'gaz_by_ids',
     '_can_edit_trip',
     // get_trip_owner_profiles убрана (TRIP-425): мёртвая — 0 вызовов в src/**,
     // functions/**, RLS-политиках и телах функций (сверено pg_policy +
@@ -204,10 +205,18 @@ export const FUNCTIONS = {
   // поиск по газеттиру, без per-user данных (batch = тот же поиск пачкой, TRIP-214).
   // nearest_cities — тот же публичный газеттир, но резолв координат → ближайшие
   // города (TRIP-226, inhouse reverse geocoding «мой город»); per-user данных нет.
+  // gaz_by_ids — ТРЕТИЙ вход того же справочника, по ключу (TRIP-524): та же
+  // проекция `gaz_project`, те же данные, что у поиска по строке, — просто
+  // адресация по geonameid. Нужен, чтобы `geonameid`, пришедший от ИИ-агента,
+  // ПРОВЕРЯЛСЯ походом в справочник, а не принимался на слово; без него проверка
+  // выродилась бы обратно в поиск по имени. Per-user данных нет, как и у соседей,
+  // но лежит он в `authExec`, а не рядом с ними: `anon` у соседей оправдан живым
+  // typeahead с лендинга, а сюда анонимный вызыватель не придёт — путь
+  // ИИ-планировщика под логином.
   // (geocode_*/link_pending_invites убраны из client-вызываемых в гигиене
   // TRIP-120 — REVOKE authenticated EXECUTE, теперь internal; см. миграцию
   // 20260705180000_trip120_hygiene_revoke_vestigial_execute.)
-  authzExempt: ['search_gazetteer', 'search_gazetteer_batch', 'nearest_cities'],
+  authzExempt: ['search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', 'gaz_by_ids'],
 };
 
 // Storage-бакеты. Ф4 (LIVE) сверяет: живой флаг `public` совпадает с манифестом
@@ -422,6 +431,10 @@ export const DOORS = {
 
   // ── n8n: Bearer N8N_SECRET, сервер-сервер ──
   aiGate:                'n8n',
+  // Инструмент ИИ-агента: поиск города в НАШЕМ справочнике (TRIP-524). Данных
+  // пользователя не касается вовсе — тот же публичный газеттир, что у typeahead
+  // фронта; дверь `n8n`, потому что зовёт её воркфлоу, а не браузер.
+  gazetteerSearch:       'n8n',
   getPendingReminders:   'n8n',
   getTripById:           'n8n',
   getTripByTelegramChatId: 'n8n',
