@@ -24,17 +24,17 @@
 -- один раз резолвится точечным обращением по первичному ключу, и дальше
 -- `i.id is null` гейтит ветки поиска бесплатно.
 --
--- ⚠️ `id` ПРИХОДИТ ИЗ jsonb ОТ КЛИЕНТА, поэтому каст защищённый (`~ '^\d+$'`):
--- прямой `::bigint` на «Portland» уронил бы резолв всего батча ошибкой 22P02,
--- а не просто не нашёл бы город.
+-- ⚠️ `id` ПРИХОДИТ ИЗ jsonb ОТ КЛИЕНТА, поэтому каст живёт ВНУТРИ `case`, а не
+-- рядом с проверкой в общем `where`: порядок вычисления условий `and` Postgres
+-- не обещает (Expression Evaluation Rules), и `geonameid = (…)::bigint` он
+-- вправе взять индексным условием ПЕРЕД регуляркой — тогда «Portland» в ключе
+-- роняет резолв ВСЕГО батча ошибкой 22P02. `case` порядок гарантирует. Кэп в 18
+-- цифр — та же защита с другого конца: 19+ цифр проходят `\d+`, но не влезают в
+-- bigint (22003), и это опять упавший батч вместо честного «нет такого города».
 --
--- ddl-guard: allow-destructive — TRIP-524: перегрузка снимается и тут же
--- пересоздаётся в той же транзакции (сигнатура не меняется, меняется тело), а
--- `gaz_by_ids` удаляется как несостоявшаяся вторая дверь: она прожила в dev
--- несколько часов, читателей в репозитории не имеет, в prod не уезжала.
-drop function if exists public.search_gazetteer_batch(jsonb, text, integer);
-
-create function public.search_gazetteer_batch(items jsonb, lang text default 'en'::text, lim integer default 1)
+-- Тело меняется через `create or replace`: сигнатура ТА ЖЕ, что у
+-- 20260908124528 (`lim` там и появился), сносить и пересоздавать нечего.
+create or replace function public.search_gazetteer_batch(items jsonb, lang text default 'en'::text, lim integer default 1)
  returns table(ord integer, geonameid bigint, display text, subtitle text, country_code text, population bigint, feature_code text, lat double precision, lng double precision, name_i18n jsonb)
  language sql
  stable security definer
@@ -46,12 +46,13 @@ as $function$
            coalesce(e.item->>'q_en', '')                  as q_en,
            upper(coalesce(e.item->>'cc', ''))             as cc,
            coalesce(nullif(e.item->>'lang', ''), lang)    as ilang,
-           -- Ключ = СУЩЕСТВУЮЩИЙ geonameid либо NULL. Выдуманный ключ здесь же
-           -- превращается в NULL, и город честно уходит в поиск по имени.
+           -- Ключ = СУЩЕСТВУЮЩИЙ geonameid либо NULL. Выдуманный ключ (как и
+           -- мусор вместо числа) превращается здесь в NULL, и город честно
+           -- уходит в поиск по имени.
            (select g.geonameid
               from public.geo_gazetteer g
-             where e.item->>'id' ~ '^\d+$'
-               and g.geonameid = (e.item->>'id')::bigint) as id
+             where g.geonameid = case when e.item->>'id' ~ '^\d{1,18}$'
+                                      then (e.item->>'id')::bigint end) as id
     from jsonb_array_elements(coalesce(items, '[]'::jsonb)) with ordinality as e(item, ord)
     where e.ord <= 50
   )
@@ -62,7 +63,8 @@ as $function$
     select r.geonameid, r.display, r.subtitle, r.country_code,
            r.population, r.feature_code, r.lat, r.lng, r.name_i18n
     from (
-      -- src -1 = ключ: точный город, ранжировать нечего.
+      -- src -1 = ключ: точный город, ранжировать нечего. `rn` типизируем под
+      -- `row_number()` соседних веток — иначе union не сойдётся по типу.
       select g.geonameid, p.display, p.subtitle, g.country_code,
              g.population, g.feature_code, g.lat, g.lng, p.name_i18n,
              -1 as src, 1::bigint as rn
@@ -88,6 +90,8 @@ $function$;
 revoke all on function public.search_gazetteer_batch(jsonb, text, integer) from public, anon, authenticated;
 grant execute on function public.search_gazetteer_batch(jsonb, text, integer) to anon, authenticated;
 
--- Несостоявшаяся вторая дверь. Единственным её читателем был `citiesByIds`,
--- который этой же правкой удаляется с фронта.
+-- ddl-guard: allow-destructive — TRIP-524: сносится ровно один объект.
+-- `gaz_by_ids` — несостоявшаяся вторая дверь: единственным её читателем был
+-- `citiesByIds`, который этой же правкой удаляется с фронта; функция прожила в
+-- dev несколько часов и в prod не уезжала.
 drop function if exists public.gaz_by_ids(bigint[], text);

@@ -42,12 +42,13 @@ export async function searchCities(query, lang) {
 // round-trip, one plan, one pooled connection (TRIP-214). This replaces the old
 // `Promise.all(items.map(rpc))`, which fired N concurrent search_gazetteer calls
 // with no concurrency limit and could storm the shared connection pool on a
-// long AI route. An item carrying `geonameid` (TRIP-524 — the AI planner picked
-// the city itself with the gazetteer tool) is taken BY KEY server-side, with no
-// search and no ranking; everything else searches by name exactly as before, so
-// there is still ONE door and one round-trip either way. Returns an array aligned to `items`, each a (0- or 1-length)
+// long AI route. Returns an array aligned to `items`, each a (0- or 1-length)
 // list so callers pick result[0] as before. The displayed/saved name stays the
 // caller's — we supply geonameid + coords + the name_i18n snapshot.
+//
+// TRIP-524: an item that already carries a `geonameid` is taken BY KEY inside
+// the same RPC — no search, no ranking — so the key is a precision knob on this
+// one door, never a second one. See `buildResolvePayload` for the payload.
 export async function resolveCities(items, lang) {
   if (!Array.isArray(items) || items.length === 0) return [];
   const lk = normLang(lang);

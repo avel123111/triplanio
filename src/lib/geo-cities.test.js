@@ -81,21 +81,24 @@ test('expandBatchRows: out-of-range ord is ignored, null rows → all empty', ()
   assert.deepEqual(expandBatchRows(null, 2, 'en'), [[], []]);
 });
 
-test('★ buildResolvePayload: ключ едет в том же элементе, не второй дверью (TRIP-524)', () => {
-  // Ключ у ИИ-планировщика лежит в `geonameid` (словарь операций), у уже
-  // сформированного запроса — в `id`. Обе формы читаются, потому что дверь одна,
-  // и ветвиться на «с ключом / без ключа» вызывателю негде.
+test('buildResolvePayload: the AI key rides in the same item, not a second door (TRIP-524)', () => {
+  // The planner's key lives in `geonameid` (the ops vocabulary) and travels as
+  // `id`; the query keeps its names alongside, so nothing branches on the key.
   const withKey = buildResolvePayload(
     [{ city_name: 'Портленд', city_name_en: 'Portland', country_code: 'us', geonameid: 4975802 }],
     'ru',
   );
   assert.deepEqual(withKey, [{ q: 'Портленд', q_en: 'Portland', cc: 'US', lang: 'ru', id: '4975802' }]);
 
-  // Ключа нет — поле есть, но пустое: RPC читает его как «искать по имени», и
-  // старый вызыватель, который про ключ не знает, ведёт себя ровно как раньше.
+  // No key → the field is present but empty, which the RPC reads as "search by
+  // name": a caller that knows nothing about keys behaves exactly as before.
   const noKey = buildResolvePayload([{ city_name: 'Портленд', geonameid: null }], 'ru');
   assert.equal(noKey[0].id, '');
 
-  // Строка-запрос (typeahead) ключа не несёт и не ломается.
-  assert.deepEqual(buildResolvePayload(['Рим'], 'ru'), [{ q: 'Рим', q_en: '', cc: '', lang: 'ru', id: '' }]);
+  // A bare `id` is NOT a gazetteer key: in this app it means "row / node id"
+  // (`shapeAiCity` stamps `id: Date.now() + idx` on every city). Reading it here
+  // would send a node id to the gazetteer without ever throwing — the search
+  // would just quietly take over. One name, one meaning.
+  const nodeId = buildResolvePayload([{ city_name: 'Портленд', id: 1788877764580 }], 'ru');
+  assert.equal(nodeId[0].id, '');
 });

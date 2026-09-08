@@ -1066,7 +1066,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const want = citiesInOps(ops);
     if (want.length === 0) return [];
     const lists = await resolveCities(want, lang || 'ru');
-    return want.map((c, i) => (lists[i]?.[0] ? shapeAiCity(c, i, lists[i][0]) : null));
+    return want.map((c, i) => {
+      const best = lists[i]?.[0];
+      return best ? shapeAiCity(c, i, best) : null;
+    });
   };
 
   const planMut = useMutation({
