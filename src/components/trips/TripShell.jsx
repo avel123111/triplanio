@@ -242,13 +242,21 @@ export default function TripShell() {
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
   // Визард отдаёт своё действие целиком (шаг истории + конфирм ухода внутри),
   // поэтому гейт ухода здесь ставится только на выведенный переход.
-  const confirmLeave = cbs.current.confirmLeave;
-  const goBack = cbs.current.onBack
-    || withLeaveGuard(confirmLeave, () => nav(section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`));
+  // ★ Колбэк экрана читается В МОМЕНТ ВЫЗОВА, а не в рендере оболочки. Оболочка
+  // не перерисовывается на каждый рендер экрана (колбэки едут ссылкой — см.
+  // контракт), поэтому функция, взятая из ссылки здесь, — замыкание ТОГО рендера
+  // экрана, при котором оболочка рисовалась в последний раз. Так «назад» визарда
+  // уходило без конфирма: захваченный `requestBack` первого рендера ещё не знал о
+  // восстановленном черновике. Наличие колбэка (рисовать ли кнопку) — факт
+  // экрана и меняется вместе с фактами; сам вызов всегда идёт через ссылку.
+  const through = (name) => (cbs.current[name] ? (...a) => cbs.current[name]?.(...a) : undefined);
+  const confirmLeave = through('confirmLeave');
+  const goBack = () => (cbs.current.onBack
+    || withLeaveGuard(confirmLeave, () => nav(section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`)))();
   const backTitle = factBackTitle || t('trip.back');
   const onNavigate = (id) => cbs.current.onNavigate?.(id);
-  const onShare = cbs.current.onShare;
-  const onProUpsell = cbs.current.onProUpsell;
+  const onShare = through('onShare');
+  const onProUpsell = through('onProUpsell');
 
   // Секция сама владеет своим скроллом (карта, чат, редактор): тело без
   // паддинга и без скролла, поверхность в край. Поверхность с картой — всегда.
