@@ -2415,6 +2415,20 @@ export type Database = {
         }
         Returns: string
       }
+      gaz_by_ids: {
+        Args: { _ids: number[]; _lang?: string }
+        Returns: {
+          country_code: string
+          display: string
+          feature_code: string
+          geonameid: number
+          lat: number
+          lng: number
+          name_i18n: Json
+          population: number
+          subtitle: string
+        }[]
+      }
       gaz_project: {
         Args: { _geonameid: number; _lang?: string }
         Returns: {
@@ -2572,7 +2586,7 @@ export type Database = {
         }[]
       }
       search_gazetteer_batch: {
-        Args: { items: Json; lang?: string }
+        Args: { items: Json; lang?: string; lim?: number }
         Returns: {
           country_code: string
           display: string
