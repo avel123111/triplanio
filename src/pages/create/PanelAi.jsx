@@ -60,8 +60,17 @@ export default function PanelAi({ aiMessages = [], onGenerate }) {
   const t = useT();
 
   // Auto-scroll the transcript to the newest message (the panel body is the scroller).
+  // ★ ПЕРВЫЙ ПОКАЗ — ПРЫЖКОМ, ДАЛЬШЕ ПЛАВНО. Лента монтируется уже прокрученной
+  // вниз (возврат на вкладку «Диалог», вход на шаг), а поверхность в этот момент
+  // ставит новое содержимое в начало (`bodyKey` у шелла): плавный доезд из этой
+  // точки читался бы как «экран сам поехал». Плавность нужна только там, где
+  // человек УЖЕ смотрит ленту и приходит новая реплика.
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [aiMessages.length]);
+  const scrolled = useRef(false);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: 'end', behavior: scrolled.current ? 'smooth' : 'auto' });
+    scrolled.current = true;
+  }, [aiMessages.length]);
 
   // Quick-start chips only on the opening turn (nothing sent yet); tapping one sends
   // it straight to the bot. They sit UNDER the welcome message, indented by an

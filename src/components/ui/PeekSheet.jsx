@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
+import { detentFloor, gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
@@ -46,14 +46,8 @@ import { useKeyboardOpen } from '@/lib/keyboardOpen';
  *   </PeekSheet>
  */
 
-// ★ ВЫСОТУ НИЖНЕГО НАВА ЗАДАЁТ ЭКРАН, А НЕ ПРИМИТИВ. Зашитая константа здесь
-// была прямой ошибкой: под линзами трипа нав есть, а в планировщике его нет
-// вовсе — и эти «60px на всякий случай» превращались в пустую полосу под
-// футером. Примитив знает только про домашнюю полоску (она есть везде), про
-// чужой нав ему обязан сказать вызыватель.
 const FLICK_VELOCITY = 0.3; // px/мс на отпускании, выше которого бросок решает направление
 
-// Инсет домашней полоски в px (env() из JS не прочитать).
 /**
  * ★ ВЫСОТА ВЬЮПОРТА — ЭТО `visualViewport`, А НЕ `window.innerHeight`.
  * Клавиатура на мобиле сжимает ИМЕННО визуальный вьюпорт, и весь проект уже
@@ -142,6 +136,7 @@ export function PeekSheet({
   // измеряются, а не задаются числом: шапка у каждого экрана своя.
   const [headPx, setHeadPx] = useState(96);
   const [dockPx, setDockPx] = useState(0);
+  const [kbPx, setKbPx] = useState(0);
   const [footPx, setFootPx] = useState(0);
   const [vh, setVh] = useState(viewportH);
   const [vTop, setVTop] = useState(viewportTop);
@@ -154,10 +149,12 @@ export function PeekSheet({
   // содержимое кончалось на 120px выше дна, а футер повисал посреди шита.
   // Футера нет — резерв держит сам док, чтобы шапка не ушла под нижний нав.
   const reservePx = footPx > 0 ? footPx : dockPx;
-  // Нижний детент обязан вмещать ВСЁ, что не скроллится: шапку и этот резерв.
-  // Иначе «15%» показывает обрезанный заголовок — то есть выглядит как сломанный
-  // шит, а не как маленький.
-  const minPx = headPx + reservePx;
+  // Нижний детент обязан вмещать ВСЁ, что не скроллится: шапку и этот резерв —
+  // иначе «15%» показывает обрезанный заголовок, то есть выглядит как сломанный
+  // шит, а не как маленький. ЗА ВЫЧЕТОМ КЛАВИАТУРЫ: её высота в резерве футера
+  // есть (композер обязан быть над ней), но полом детента быть не может —
+  // разбор у `detentFloor`, и он про чужую шторку.
+  const minPx = detentFloor({ headPx, reservePx, kbPx });
   const stops = useMemo(() => resolveDetents(detents, vh, minPx), [detents, vh, minPx]);
   // Потолок для того, кто двигает КАРТУ: второй сверху детент. Верхний закрывает
   // экран целиком, и двигать под ним нечего. Считается здесь, потому что детенты
@@ -221,9 +218,14 @@ export function PeekSheet({
     if (!sheet || !head) return;
     const band = head.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
     setHeadPx(Math.round(band));
-    // Полосу нижнего нава публикует сам нав (`--nav-dock-h`, safe-area уже
-    // внутри). Пропа `dock` не осталось: экран не обязан знать чужую высоту.
+    // ★ ВЫСОТУ НИЖНЕГО НАВА ЗАДАЁТ НАВ, А НЕ ПРИМИТИВ. Зашитая константа была
+    // прямой ошибкой: под линзами трипа нав есть, а в планировщике его нет
+    // вовсе — и «60px на всякий случай» превращались в пустую полосу под
+    // футером. Полосу публикует сам нав (`--nav-dock-h`, safe-area уже внутри);
+    // пропа `dock` не осталось: экран не обязан знать чужую высоту.
     setDockPx(Math.round(cssPx('var(--nav-dock-h, 0px)')));
+    // Клавиатура публикует свою высоту тем же способом, что нав — свою.
+    setKbPx(Math.round(cssPx('var(--kb-h, 0px)')));
     setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
     // ⚠️ КЛАВИАТУРА НЕ МЕНЯЕТ ГЕОМЕТРИЮ ПОВЕРХНОСТИ — ОНА ОБЪЯВЛЯЕТ РЕЗЕРВ.
     // Детенты считаются долями от `vh`, поэтому КАЖДАЯ ступень выезда

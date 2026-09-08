@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gestureOwner, nearestDetent, resolveDetents, SHEET_CONTROL_SELECTOR, tapSettles } from './sheetDetents.js';
+import { detentFloor, gestureOwner, nearestDetent, resolveDetents, SHEET_CONTROL_SELECTOR, tapSettles } from './sheetDetents.js';
 
 const VH = 800;
 const HEAD = 120; // грип + шапка + док + safe-area
@@ -132,4 +132,18 @@ test('★ селектор управления перечисляет ровн�
   for (const need of ['button', '[role="button"]', 'input', 'a[href]', '[role="slider"]']) {
     assert.ok(SHEET_CONTROL_SELECTOR.includes(need), need);
   }
+});
+
+test('пол детента не требует высоты клавиатуры (TRIP-535)', () => {
+  // Резерв футера при поднятой клавиатуре ВКЛЮЧАЕТ её (композер обязан быть
+  // над ней), а пол нижнего детента — нет: иначе шит за ЧУЖОЙ шторкой с полем
+  // ввода подпрыгнет на высоту её клавиатуры, ни разу не сменив детент.
+  assert.equal(detentFloor({ headPx: 96, reservePx: 60, kbPx: 0 }), 156);
+  assert.equal(detentFloor({ headPx: 96, reservePx: 360, kbPx: 300 }), 156, 'клавиатура из пола вычтена');
+  // Клавиатура выше самого резерва (док спрятан, футера нет) не уводит пол в минус.
+  assert.equal(detentFloor({ headPx: 96, reservePx: 60, kbPx: 300 }), 96);
+  // Отрицательные и пустые входы вырождаются в ноль, а не в NaN: обе величины
+  // приезжают из живого DOM.
+  assert.equal(detentFloor({ headPx: -10, reservePx: -10, kbPx: -10 }), 0);
+  assert.equal(detentFloor(), 0);
 });

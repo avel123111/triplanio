@@ -8568,7 +8568,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .peek-sheet__body height — тело ростом с видимую полосу: скролл внутри неё, а не за экраном
    visual-diff-exempt: .peek-sheet__body flex — высоту тела задаёт детент, а не содержимое
    visual-diff-exempt: .peek-sheet__foot flex — панель действий вне скролла тела
-   visual-diff-exempt: .peek-sheet__foot padding-bottom — футер поднят над доком: док считается ровно здесь, один раз
+   (док считается ровно здесь, один раз — маркер 2p на это объявление жил в своём PR)
    visual-diff-exempt: .peek-sheet__body padding-bottom — отступ снят: на нижнем детенте он держал тело в 16px вместо нуля, а воздух даёт содержимое */
 /* Панель действий шита — СНАРУЖИ скролла: она обязана быть на виду при любом
    положении списка. Поднята над нижним навом и домашней полоской. */

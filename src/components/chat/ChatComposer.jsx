@@ -75,7 +75,6 @@ const ChatComposer = forwardRef(
 
   useImperativeHandle(ref, () => ({ insertMention }));
 
-  // «Клавиатура сейчас поднята» — общий источник на всё приложение.
   const keyboardOpen = useKeyboardOpen();
 
   const send = () => {
@@ -89,7 +88,8 @@ const ChatComposer = forwardRef(
     // которому прячется нижний нав). Поднята — снимаем фокус, и она уезжает,
     // открывая ответ бота; не поднята — оставляем, чтобы можно было писать
     // дальше не целясь в поле мышью.
-    if (keyboardOpen) taRef.current?.blur(); else taRef.current?.focus();
+    if (keyboardOpen) taRef.current?.blur();
+    else taRef.current?.focus();
     onSend(content);
   };
 
