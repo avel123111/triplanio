@@ -153,24 +153,3 @@ export const SHEET_CONTROL_SELECTOR = [
 export function tapSettles({ onHandle = false, onControl = false } = {}) {
   return !!onHandle && !onControl;
 }
-
-/**
- * ПОЛ НИЖНЕГО ДЕТЕНТА — «сколько шит обязан показать», а НЕ «сколько занимает
- * футер». Величины расходятся ровно на клавиатуру.
- *
- * ★ ЗАЧЕМ РАЗВЕДЕНО. Место под клавиатуру футер РЕЗЕРВИРУЕТ (иначе композер
- * уезжает под неё), и этот резерв входит в его измеренную высоту. Но требовать
- * той же высоты от НИЖНЕГО детента нельзя: шит, стоящий за ЧУЖОЙ шторкой с
- * полем ввода, подпрыгнул бы на высоту её клавиатуры — своим транзишном, ещё и
- * уведя за собой камеру. Это дефект TRIP-494 («поверхность реагирует только на
- * СВОЮ клавиатуру») на втором маршруте: не через `vh`, а через замер футера.
- *
- * @param {{ headPx?: number, reservePx?: number, kbPx?: number }} [p]
- * @returns {number}
- */
-export function detentFloor({ headPx = 0, reservePx = 0, kbPx = 0 } = {}) {
-  const head = Math.max(0, headPx);
-  const reserve = Math.max(0, reservePx);
-  const kb = Math.max(0, kbPx);
-  return head + Math.max(0, reserve - kb);
-}

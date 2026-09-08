@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { detentFloor, gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
+import { gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
@@ -136,7 +136,6 @@ export function PeekSheet({
   // измеряются, а не задаются числом: шапка у каждого экрана своя.
   const [headPx, setHeadPx] = useState(96);
   const [dockPx, setDockPx] = useState(0);
-  const [kbPx, setKbPx] = useState(0);
   const [footPx, setFootPx] = useState(0);
   const [vh, setVh] = useState(viewportH);
   const [vTop, setVTop] = useState(viewportTop);
@@ -149,12 +148,10 @@ export function PeekSheet({
   // содержимое кончалось на 120px выше дна, а футер повисал посреди шита.
   // Футера нет — резерв держит сам док, чтобы шапка не ушла под нижний нав.
   const reservePx = footPx > 0 ? footPx : dockPx;
-  // Нижний детент обязан вмещать ВСЁ, что не скроллится: шапку и этот резерв —
-  // иначе «15%» показывает обрезанный заголовок, то есть выглядит как сломанный
-  // шит, а не как маленький. ЗА ВЫЧЕТОМ КЛАВИАТУРЫ: её высота в резерве футера
-  // есть (композер обязан быть над ней), но полом детента быть не может —
-  // разбор у `detentFloor`, и он про чужую шторку.
-  const minPx = detentFloor({ headPx, reservePx, kbPx });
+  // Нижний детент обязан вмещать ВСЁ, что не скроллится: шапку и этот резерв.
+  // Иначе «15%» показывает обрезанный заголовок — то есть выглядит как сломанный
+  // шит, а не как маленький.
+  const minPx = headPx + reservePx;
   const stops = useMemo(() => resolveDetents(detents, vh, minPx), [detents, vh, minPx]);
   // Потолок для того, кто двигает КАРТУ: второй сверху детент. Верхний закрывает
   // экран целиком, и двигать под ним нечего. Считается здесь, потому что детенты
@@ -224,22 +221,22 @@ export function PeekSheet({
     // футером. Полосу публикует сам нав (`--nav-dock-h`, safe-area уже внутри);
     // пропа `dock` не осталось: экран не обязан знать чужую высоту.
     setDockPx(Math.round(cssPx('var(--nav-dock-h, 0px)')));
-    // Клавиатура публикует свою высоту тем же способом, что нав — свою.
-    setKbPx(Math.round(cssPx('var(--kb-h, 0px)')));
     setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
-    // ⚠️ КЛАВИАТУРА НЕ МЕНЯЕТ ГЕОМЕТРИЮ ПОВЕРХНОСТИ — ОНА ОБЪЯВЛЯЕТ РЕЗЕРВ.
-    // Детенты считаются долями от `vh`, поэтому КАЖДАЯ ступень выезда
-    // клавиатуры (их несколько, движок шлёт `visualViewport.resize` пачкой)
-    // пересчитывала ВСЕ ступени и заодно `restY`: шит менял и высоту, и
-    // положение, ни разу не сменив детент, а `transform` при этом ехал своим
-    // 320-мс транзишном — отсюда дрожь на каждом открытии клавиатуры. Правило
-    // тут ровно то же, что у полноэкранных поверхностей (TRIP-494): коробка
-    // остаётся прежней, а закрытую снизу полосу забирает отступ (`--kb-h` у
-    // футера, см. `.peek-sheet__foot`). Своя клавиатура вдобавок поднимает шит
-    // на верхний детент (`keyboardMine`) — это ОДИН переход, и он плавный.
+    // ⚠️ ЧУЖАЯ КЛАВИАТУРА — НЕ НАШ ОРИЕНТИР. Детенты считаются долями от `vh`,
+    // поэтому одна усадка видимой области пересчитывает ВСЕ ступени и заодно
+    // `restY` — то есть шит меняет и высоту, и положение, даже не трогая детент.
+    // Под чужой шторкой он обязан стоять там, где стоял: держим последние ЕГО
+    // значения.
+    // ⚠️ СВОЮ клавиатуру пересчитывать ОБЯЗАТЕЛЬНО: `interactive-widget=
+    // resizes-content` в мете вьюпорта ужимает раскладочный вьюпорт вместе с
+    // видимым, поэтому и коробка шита (`100dvh`), и его внутренние высоты
+    // обязаны считаться от сжатой величины. Заморозка `vh` под своей
+    // клавиатурой ловила ПРОМЕЖУТОЧНОЕ значение (атрибут `data-keyboard`
+    // приходит не на первом кадре её выезда) и оставляла шит рассчитанным на
+    // высоту, которой уже нет, — низ уезжал за экран.
     // Читаем DOM, а не состояние: `measure` навешан один раз и реактивных
     // значений не видит, а обе величины тут — свойства живого документа.
-    if (!document.documentElement.hasAttribute('data-keyboard')) {
+    if (!(document.documentElement.hasAttribute('data-keyboard') && !isMine(sheetRef.current))) {
       setVh(viewportH());
       setVTop(viewportTop());
     }
