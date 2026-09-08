@@ -116,6 +116,22 @@ test('зелено: у кнопки нет обработчика (disabled-за
   assert.equal(r.code, 0, r.out);
 });
 
+test('краснеет: updateProfile( — дверь записи профиля (TRIP-520), не invokeFn', () => {
+  // TRIP-520 свёл запись профиля в одну дверь `updateProfile` (AuthContext) и
+  // снял `invokeFn('account/profile')` у вызывателей. Гард, знавший только
+  // invokeFn, ослеп на эту запись — и это поймала протухшая запись ALLOW у
+  // `handleRemoveAvatar`, уронив прогон на dev. Дверь должна быть в WRITE.
+  const r = run({
+    'src/Screen.jsx': `
+      export function Screen() {
+        const clear = async () => { await updateProfile({ avatar_url: null }); };
+        return <Btn variant="danger" icon="trash" onClick={clear}>Удалить</Btn>;
+      }`,
+  });
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /обработчик clear/);
+});
+
 test('краснеет: .mutate( тоже шов записи, не только invokeFn', () => {
   const r = run({
     'src/Screen.jsx': `

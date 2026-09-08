@@ -22,6 +22,15 @@
       ]
     },
     {
+      "source": "/images/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
       "source": "/:file(og-cover.jpg|og-join.jpg|icon-192.png|icon-512.png|apple-touch-icon.png|favicon.ico|triplanio-logo.svg)",
       "headers": [
         {

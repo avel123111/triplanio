@@ -15,7 +15,7 @@
  * деструктивным тоном (`<Btn variant="danger"|"danger-solid">`,
  * `<IconBtn tone="danger">`), чей обработчик в ЭТОМ ЖЕ файле дотягивается до
  * шва записи (`invokeFn(`, `.mutate(`, `.mutateAsync(`, `budgetMutate(`,
- * `rpc…(`) и при этом НЕ проходит через `confirm(`.
+ * `updateProfile(`, `rpc…(`) и при этом НЕ проходит через `confirm(`.
  *
  * Отсюда три полезных следствия:
  *   • удаление файла из НЕСОХРАНЁННОЙ формы (DocumentsField, EventAiBlock,
@@ -44,8 +44,12 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = 'src';
-/** Швы записи. `.mutate(`/`.mutateAsync(` ловят react-query, остальное — прямые двери. */
-const WRITE = /\.mutateAsync\s*\(|\.mutate\s*\(|invokeFn\s*\(|budgetMutate\s*\(|formWrite\s*\(|\brpc[A-Z]\w*\s*\(/;
+/** Швы записи. `.mutate(`/`.mutateAsync(` ловят react-query, остальное — прямые двери.
+ *  `updateProfile(` — единственная дверь записи профиля (AuthContext, TRIP-520):
+ *  она заменила `invokeFn('account/profile')` у вызывателей, и без неё здесь гард
+ *  слеп на удаление аватара. Новая дверь записи в приложении = строка в этом
+ *  списке, иначе её деструктивные кнопки проходят молча. */
+const WRITE = /\.mutateAsync\s*\(|\.mutate\s*\(|invokeFn\s*\(|budgetMutate\s*\(|formWrite\s*\(|updateProfile\s*\(|\brpc[A-Z]\w*\s*\(/;
 /** Канон подтверждения: промис-обёртка `confirm({…})` (useConfirm → ConfirmDialog). */
 const CONFIRM = /\bconfirm\s*\(/;
 /** Деструктивный тон в разметке. */

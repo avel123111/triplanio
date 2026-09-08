@@ -36,13 +36,14 @@ import { runInBackground } from './http.ts';
 import { signN8nJwt } from './n8nAuth.ts';
 import { captureEdgeError } from './sentry.ts';
 import { envTag } from './envTag.ts';
+import { n8nWebhookUrl } from './n8nAuth.ts';
 import { RESOLVERS, EMPTY_DATA, type EmitData } from './emitResolvers.ts';
 import { buildInAppRows, EXTERNAL } from './notifyRules.ts';
 
-// n8n receiver base for backend communication events; the event name is the
-// last path segment, e.g. .../webhook/notify/invite_created (§1). One webhook
-// per event in n8n — no Switch, the URL routes.
-const N8N_NOTIFY_BASE = 'https://n8n-production-d1214.up.railway.app/webhook/notify';
+// n8n receiver for backend communication events; the event name is the last
+// path segment, e.g. .../webhook/notify/invite_created (§1). One webhook per
+// event in n8n — no Switch, the URL routes. Адрес инстанса — одна дверь
+// `n8nWebhookUrl` (`_shared/n8nAuth.ts`).
 
 /** Id slots the resolver dereferences. Every field optional; the backend fills
  *  only what applies. NOT sent on the wire — consumed by the resolver. */
@@ -102,7 +103,7 @@ async function postExternal(event: string, data: EmitData): Promise<void> {
     }
     const body = buildEnvelope(event, data);
     const jwt = await signN8nJwt(secret);
-    const res = await fetch(`${N8N_NOTIFY_BASE}/${encodeURIComponent(event)}`, {
+    const res = await fetch(n8nWebhookUrl(`notify/${encodeURIComponent(event)}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
       body: JSON.stringify(body),

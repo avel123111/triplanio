@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { reportAuthError } from '@/lib/reportDataError';
@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }) => {
     // Set from `data.created` of account/register when THIS call created the row.
     let profileCreated = false;
     try {
-      // A silent refresh (checkUserAuth after a profile save / avatar change /
+      // A silent refresh (checkUserAuth on the window-focus re-sync / the
       // Stripe-return entitlement poll) updates `user` in place WITHOUT flipping
       // isLoadingAuth. The whole authenticated tree is gated on isLoadingAuth in
       // App.jsx, so toggling it here unmounts+remounts the entire app — a visible
@@ -290,9 +290,10 @@ export const AuthProvider = ({ children }) => {
     } finally {
       // Release the in-flight guard. It exists only to dedupe CONCURRENT loads
       // (SIGNED_IN + INITIAL_SESSION firing together on page load). If it stayed
-      // pinned to the user id forever, a later checkUserAuth() - e.g. right after
-      // saving the profile - would early-return and never re-fetch, so the updated
-      // name never reached the context and looked like it "didn't save".
+      // pinned to the user id forever, a later checkUserAuth() - e.g. the window-
+      // focus re-sync or the Stripe-return entitlement poll - would early-return
+      // and never re-fetch, so the changed row never reached the context and the
+      // screen kept showing the stale one.
       loadingForRef.current = null;
     }
   };
@@ -305,6 +306,46 @@ export const AuthProvider = ({ children }) => {
       await loadUserProfile(session.user, { silent: true });
     }
   };
+
+  // ★ ЕДИНСТВЕННАЯ ДВЕРЬ ЗАПИСИ ПРОФИЛЯ — У ВЛАДЕЛЬЦА КЭША `user`.
+  //
+  // Прод-дефект (TRIP-520): у профиля был один читатель-кэш (`user` здесь) и
+  // четыре независимых писателя (имя, аватар ×2, язык/единицы), каждый из
+  // которых сам должен был ПОМНИТЬ дёрнуть `checkUserAuth()` после записи.
+  // Трое помнили, четвёртый нет — и смена языка залогиненным «ничего не
+  // делала»: слой профиля (`user.language`) стоял выше только что записанного
+  // слоя посетителя и перекрывал выбор до перезагрузки страницы.
+  //
+  // Поэтому запись идёт через владельца: шов `account/profile` (upsert по
+  // актору) возвращает ПОЛНУЮ обновлённую строку `users` той же формы, что
+  // читает `getMe` (`select('*')`), и кэш сверяется по ОТВЕТУ сервера, как
+  // брони (`reconcileBookingWrite`, TRIP-484): не повторным чтением и не
+  // догадкой. Один круг, честное состояние; `checkUserAuth` остаётся для того,
+  // что меняется МИМО клиента (вебхук Stripe → право).
+  //
+  // ★ Форма ответа — ГОЛАЯ строка, не конверт. Конверт `{ row, cities,
+  // transfers, expenses }` шов строит только у действий с `returnChain` /
+  // `returnExpenses` (`mutate.ts`); у `account/profile` флагов нет. Первая
+  // редакция читала `data.row`, получала `undefined`, `{...prev, ...undefined}`
+  // отдавал прежний профиль — и язык «менялся» лишь от случайного
+  // перечитывания через ~10 с (замер на превью, TRIP-520). Обе стороны
+  // контракта пинит `profileWriter.test.js`.
+  //
+  // Отказ приезжает машинным `code` (контракт TRIP-400) — показ решает
+  // вызыватель (инлайн в форме / тост в настройках). Аноним (нет `user`) сюда
+  // не ходит: шов требует `self`. Выход из аккаунта во время записи не
+  // воскрешает профиль (`prev` = null → остаётся null).
+  //
+  // Идентичность СТАБИЛЬНА (`useCallback`, замыкает только стабильный `setUser`):
+  // дверь стоит в зависимостях `persistProfile → setLang/setUnits → value`
+  // i18n-контекста, и новая функция на каждый рендер провайдера пересоздавала
+  // бы контекст i18n — перерисовку всех потребителей `t()`, то есть приложения.
+  const updateProfile = useCallback(async (patch) => {
+    const { data, error, code } = await invokeFn('account/profile', { body: patch });
+    if (error || code) return { error, code };
+    setUser((prev) => (prev ? { ...prev, ...data } : prev));
+    return { error: null, code: null };
+  }, []);
 
   const logout = async (shouldRedirect = true) => {
     // Flag the logout so the SIGNED_OUT listener holds the spinner instead of
@@ -338,6 +379,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       navigateToLogin,
       checkUserAuth,
+      updateProfile,
       checkAppState: checkUserAuth,     // alias for interface compatibility
     }}>
       {children}

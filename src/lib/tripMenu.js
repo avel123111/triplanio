@@ -23,6 +23,10 @@ import { clearsStep } from './tripStep.js';
 //               read-двери (`getTripDetails.myStep`), сравнивается `clearsStep`.
 //               Принимает step ('owner'|'editor'|'participant'|null)
 //   event     — имя события аналитики при открытии (TRIP-213 Ф2c)
+//   bleed     — секция лежит ПОД рейлом (обе колонки сетки оболочки): холст карты
+//               во всю ширину, как в визарде, рейл над ним как закрытая площадь
+//               (`TripShell`, `.trip-content[data-bleed]`). Только у секций, чья
+//               поверхность — карта во весь экран; обзор с картой в карточке — нет.
 //   flush     — секция сама владеет своим скроллом: тело без паддинга и без
 //               скролла (`.trip-screen-body--flush`), поверхность в край
 //   hidesDock — на секции не показывается плавающий мобильный док. Значение —
@@ -51,7 +55,7 @@ export const SECTIONS = [
   // оставляя живым всё, что ведёт в форк. Пол безопасности при этом не сдвинулся:
   // все пять RPC маршрута гейтует сервер (`_shared/resources/tripRoute.ts`,
   // `requires:['editor']`), фронтовая блокировка — про честный UI, а не про защиту.
-  { id: 'route', group: 'lens', labelKey: 'trip.sidebar_route', icon: 'route', event: 'route_opened', flush: true },
+  { id: 'route', group: 'lens', labelKey: 'trip.sidebar_route', icon: 'route', event: 'route_opened', flush: true, bleed: true },
   { id: 'timeline', group: 'lens', labelKey: 'trip_menu.timeline', icon: 'list', event: 'timeline_opened' },
   { id: 'calendar', group: 'lens', labelKey: 'trip_menu.calendar', icon: 'calendar', event: 'calendar_opened' },
   { id: 'budget', group: 'lens', labelKey: 'trip.sidebar_budget', icon: 'wallet', event: 'budget_opened', addon: 'budget' },

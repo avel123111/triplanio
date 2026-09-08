@@ -1,7 +1,6 @@
 // @ts-check
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { toast } from '@/components/ui/use-toast';
 // Файл напрямую, НЕ через `@/design/index`: тот импортирует `useT` отсюда,
@@ -101,7 +100,7 @@ function detectInitialUnits(user) {
 }
 
 export function I18nProvider({ children }) {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
 
   // ★★ ЯЗЫК СКЛАДЫВАЕТСЯ ИЗ ТРЁХ СЛОЁВ, А НЕ ПЕРЕУТВЕРЖДАЕТСЯ ЭФФЕКТАМИ
   // (TRIP-520). Разбор слоёв — в шапке `visitorLang` (translations.js):
@@ -327,16 +326,17 @@ export function I18nProvider({ children }) {
     return str;
   }, [lang]);
 
-  // Обе настройки ОПТИМИСТИЧНЫ: экран и localStorage меняются мгновенно, edge-
-  // запись профиля не блокирует UI. Запись идёт единой дверью (шов
-  // account/profile), не прямым REST в users; общий хвост — здесь. Провал edge-
-  // записи обрабатывается ЧЕСТНО — тост через errorText, а не `catch{/*ignore*/}`
+  // Запись профиля идёт через ЕГО ВЛАДЕЛЬЦА — `updateProfile` в AuthContext:
+  // он же обновляет `user` из ответа шва, поэтому слой профиля (`user.language`,
+  // `user.unit_system`) становится живым по построению, а не потому, что здесь
+  // помнят дёрнуть перечитывание (TRIP-520: именно эта копия и забыла). Провал
+  // обрабатывается ЧЕСТНО — тост через errorText, а не `catch{/*ignore*/}`
   // (контракт ошибок TRIP-400). Аноним (нет user) — только локально, без двери.
   const persistProfile = useCallback(async (patch) => {
     if (!user) return;
-    const { error, code } = await invokeFn('account/profile', { body: patch });
+    const { error, code } = await updateProfile(patch);
     if (error || code) toast({ description: errorText(t, code), variant: 'destructive' });
-  }, [user, t]);
+  }, [user, updateProfile, t]);
 
   // ★ «ЧЕЛОВЕК ВЫБРАЛ ЯЗЫК» — ЭТО ЗАПИСЬ В ДВА НИЖНИХ СЛОЯ, И БОЛЬШЕ НИЧЕГО.
   //

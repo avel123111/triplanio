@@ -25,7 +25,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   insertNode, withNights, recomputeDates, makeNode,
-  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, cityNodesOf,
+  startOf, endOf, hasExplicitEnd, isAnchorNode, toCitiesPayload, cityNodesOf, visitNumbers,
 } from './routeModel.js';
 
 const city = (name, extra = {}) => ({
@@ -198,4 +198,24 @@ test('★★ ФИНИШ НЕ ГОРОД СПИСКА: он якорь, и в г�
   const nodes = [anchor('Рим', 'start'), stop('Милан', 2), anchor('Ницца', 'end')];
   assert.deepEqual(cityNodesOf(nodes).map((n) => n.city_name), ['Милан']);
   assert.ok(isAnchorNode(endOf(nodes)));
+});
+
+test('★ visitNumbers: номер получают только города посещения — якоря и пересадки пропускаются, как у пинов карты', () => {
+  // Одна карта на ЧЕТЫРЕ поверхности (шаг 2, лента ИИ, обзор, ряд редактора):
+  // у редактора был свой цикл по `kind === 'transit'` — то же правило вторым
+  // выражением, то есть готовое расхождение при первой правке (TRIP-527).
+  const gaz = (name) => ({ city_name: name, city_name_en: name, country_code: 'IT', geonameid: name.length, latitude: 1, longitude: 2 });
+  const nodes = [
+    makeNode(gaz('Madrid'), 'start', { id: 's' }),
+    makeNode(gaz('Rome'), 'transit', { id: 'a', nights: 2 }),
+    makeNode(gaz('Pisa'), 'waypoint', { id: 'w', nights: 0 }),
+    makeNode(gaz('Bologna'), 'transit', { id: 'b', nights: 1 }),
+    makeNode(gaz('Madrid'), 'end', { id: 'e' }),
+  ];
+  assert.deepEqual(visitNumbers(nodes), { a: 1, b: 2 }, 'якорей и пересадок в карте нет вовсе');
+  assert.equal(visitNumbers(nodes)[String(nodes[3].id)], 2, 'пересадка номер не потребляет');
+  // Предикат ИСКЛЮЧАЮЩИЙ, не `kind === 'transit'`: у `city_visits.kind` есть
+  // DEFAULT, но нет NOT NULL, и на `kind IS NULL` ряд редактора расходился с
+  // пином карты (`cityPoints` считает тем же исключающим предикатом).
+  assert.deepEqual(visitNumbers([{ id: 'x', kind: null }]), { x: 1 }, 'узел без вида — обычный город');
 });

@@ -26,6 +26,7 @@
 // reproduces the stored dates exactly.
 
 import { DateTime } from 'luxon';
+import { formatDayMonth } from './i18n/format.js';
 
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
@@ -61,4 +62,30 @@ export function layoutDates(nodes, baseISO) {
     cursor = startDay.plus({ days: nights });
     return { ...n, start_date: startD, end_date: endD, nights, gap, position: i };
   });
+}
+
+// ─── Даты узла для показа (переехали из ManualPlanner, TRIP-527: ряд маршрута
+// рисуют три экрана, и строку дат им даёт одно место). Арифметика — та же
+// luxon-дверь, что у `layoutDates` выше; формат — ОБЩАЯ дверь `formatDayMonth`
+// (та же, что за `useI18nFormat().fmtDate`), второго имени у формата нет.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Локальная календарная дата `YYYY-MM-DD` момента `d` (не `toISOString`: тот
+ *  уводит в UTC и в плюсовых поясах сдвигает день назад). */
+export const ymdLocal = (d) => DateTime.fromJSDate(d).toISODate();
+
+/** `YYYY-MM-DD` + N дней — той же UTC-арифметикой, что цепочка дат выше. */
+export const addDays = (dateStr, days) => toDT(dateStr).plus({ days }).toISODate();
+
+// City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
+// null when the trip start isn't set yet. Shared by the city row and the map
+// tooltip so both read identically. Формат — `formatDayMonth`: у компонентов та
+// же дверь зовётся `fmtDate` из `useI18nFormat()`, здесь модуль без хуков и
+// язык приезжает параметром.
+export function cityDateRange(city, lang) {
+  const nights = +city.nights || 0;
+  const label = (iso) => formatDayMonth(iso, undefined, lang);
+  const start = city.startDate ? label(city.startDate) : null;
+  const end = (city.startDate && nights) ? label(addDays(city.startDate, nights)) : null;
+  return start ? (end ? `${start} – ${end}` : start) : null;
 }

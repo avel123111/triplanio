@@ -8,10 +8,9 @@
  * bookings open the same view/create panels as the list.
  */
 import React from 'react';
-import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import CountryFlag from '@/components/common/CountryFlag';
-import { AddRow, Btn, IconBtn, ListRow, Stepper, Tile } from '@/design/index';
+import { AddRow, Btn, Country, IconBtn, ListRow, Stepper, Tile } from '@/design/index';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
@@ -72,9 +71,6 @@ export default function CityPanel({
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
 }) {
   const { t } = useI18n();
-  // Country name is derived live from the ISO country_code (TRIP-223) — the legacy
-  // denormalized node.country column was dropped. fmtCountry re-localizes on lang change.
-  const { fmtCountry } = useI18nFormat();
   // Waypoint = a 0-night transit stop: it has arrival/departure transfers and
   // activities like a normal city, but NO hotel (no overnight stay); the nights
   // stepper turns it back into a city when raised above 0.
@@ -104,7 +100,7 @@ export default function CityPanel({
         <div className="lp-ti col col--g1">
           <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
           <b>{node.city_name}</b>
-          {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}
+          <Country code={node.country_code} />
         </div>
         <IconBtn icon="close" onClick={onBack} ariaLabel={t('common.close')} />
       </div>

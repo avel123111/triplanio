@@ -41,6 +41,12 @@ verify_jwt = false
 [functions.getPendingReminders]
 verify_jwt = false
 
+# TRIP-524: инструмент ИИ-агента — поиск города в нашем справочнике. Зовёт n8n,
+# авторизуется общим секретом (`requireN8nSecret`), поэтому JWT платформы не
+# проверяем — как у остальных server-to-server функций выше.
+[functions.gazetteerSearch]
+verify_jwt = false
+
 # aiGate — привратник TG-бота (TRIP-111). Вызывается только из n8n с
 # Bearer <N8N_SECRET> (requireN8nSecret), Telegram-апдейт мимо JWT.
 [functions.aiGate]

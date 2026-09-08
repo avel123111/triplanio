@@ -6,7 +6,7 @@ import { isMapAlive } from './alive.js';
 
 // groupByLocation теперь несёт `ids` — единый источник для `data-mids`, которым
 // `useCityMarkers` адресует пин при тогле выделения на ОБЕИХ картах. Раньше id
-// вынимался по-разному в MapView (`data-vids` из visit.id) и FlowMap (`data-mid`
+// вынимался по-разному в MapView (`data-vids` из visit.id) и карте планировщика (`data-mid`
 // из сырого id); тест пинит, что группировка собирает их в одном поле.
 test('groupByLocation: собирает ids вместе с labels/kinds/data', () => {
   const [g] = groupByLocation([

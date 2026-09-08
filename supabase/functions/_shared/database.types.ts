@@ -2572,7 +2572,7 @@ export type Database = {
         }[]
       }
       search_gazetteer_batch: {
-        Args: { items: Json; lang?: string }
+        Args: { items: Json; lang?: string; lim?: number }
         Returns: {
           country_code: string
           display: string

@@ -422,6 +422,10 @@ export const DOORS = {
 
   // ── n8n: Bearer N8N_SECRET, сервер-сервер ──
   aiGate:                'n8n',
+  // Инструмент ИИ-агента: поиск города в НАШЕМ справочнике (TRIP-524). Данных
+  // пользователя не касается вовсе — тот же публичный газеттир, что у typeahead
+  // фронта; дверь `n8n`, потому что зовёт её воркфлоу, а не браузер.
+  gazetteerSearch:       'n8n',
   getPendingReminders:   'n8n',
   getTripById:           'n8n',
   getTripByTelegramChatId: 'n8n',

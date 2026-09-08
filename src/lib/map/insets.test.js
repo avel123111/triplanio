@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NO_INSETS, addBox, canFrame, fitHeightSig, getMapInsets, padUnchanged, setMapInsets, toBox } from './insets.js';
+import { NO_INSETS, addBox, canFrame, fitAir, fitHeightSig, getMapInsets, padUnchanged, setMapInsets, toBox } from './insets.js';
 
 const B = (top, right, bottom, left) => ({ top, right, bottom, left });
 
@@ -143,4 +143,9 @@ test('подпись переживает отсутствие коробки (�
 
 test('дробная высота округляется — пиксель дрожания не гоняет камеру', () => {
   assert.equal(fitHeightSig({ top: 239.4, bottom: 239.5 }), fitHeightSig({ top: 239, bottom: 240 }));
+});
+
+test('fitAir: воздух кадра один на все поверхности — десктоп 48, телефон 32/40', () => {
+  assert.deepEqual(fitAir(false), { top: 48, right: 48, bottom: 48, left: 48 });
+  assert.deepEqual(fitAir(true), { top: 32, right: 40, bottom: 32, left: 40 });
 });

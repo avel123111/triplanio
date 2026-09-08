@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation, useNavigationType } from 'react-router-dom';
 import { track } from '@/lib/analytics';
+import { Sentry } from '@/lib/sentry';
 import { invokeFn } from '@/lib/invokeFn';
 import { tripShellQuery, tripContentQuery } from '@/lib/invokeTripFn';
 import { refusalError } from '@/lib/refusalError';
@@ -13,21 +14,20 @@ import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActi
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, nearbyCities } from '@/lib/geo';
-import CountryFlag from '@/components/common/CountryFlag';
 import { haversineKm } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, Country, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
-import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
 import FlowProgress from '@/pages/create/FlowProgress';
 import { normalizeStep, stepEntryFrom, resolveBack, nextStepState } from '@/pages/create/stepUrl';
 import { draftStorageKey, removeDraft, draftHref, draftDoorMismatch, parseDraft } from '@/lib/planner-draft';
-import FlowMap from '@/pages/create/FlowMap';
-import { MapShell } from '@/design/index';
+import { ShellSlot, useShellFacts, useShellSurface } from '@/components/trips/TripShellContext';
+import { sameCity } from '@/lib/validation';
+import { cityUnderPin } from '@/lib/map/markers';
 import PanelAi from '@/pages/create/PanelAi';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { CityAnchorRow } from '@/pages/create/anchors';
@@ -36,25 +36,19 @@ import CityPicker from '@/components/cities/CityPicker';
 import { resolveCity } from '@/components/cities/resolveCity';
 import {
   startOf, endOf, cityNodesOf, hasExplicitEnd, isAnchorNode,
-  insertNode, withNights, recomputeDates, toCitiesPayload, makeNode,
+  insertNode, withNights, recomputeDates, toCitiesPayload, toDraftPayload, makeNode, visitNumbers,
 } from '@/pages/create/routeModel';
+import { applyOps, citiesInOps } from '@/pages/create/aiOps';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { addDays, cityDateRange, ymdLocal } from '@/lib/tripDates';
+import { pluralize } from '@/lib/i18n/format';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 
 // Monotonic clock for measuring a plan call's duration (n8n + LLM). performance
 // where available, Date otherwise — a plain elapsed number for analytics.
 const nowMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 const elapsedMs = (startedAt) => Math.round(nowMs() - (startedAt ?? nowMs()));
-
-// Whole days between two ISO date strings (b - a). 0 on bad input.
-function daysBetweenISO(a, b) {
-  if (!a || !b) return 0;
-  const da = new Date(a + 'T00:00:00');
-  const db = new Date(b + 'T00:00:00');
-  if (isNaN(da) || isNaN(db)) return 0;
-  return Math.round((db - da) / 86400000);
-}
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 // Unified create-flow steps. The "Транспорт" step was removed - transfers are
@@ -74,43 +68,16 @@ const STEPS = [
 // черновика на главной), а копия ключа расходится молча — карточка просто не
 // появится, ничего при этом не сломав.
 
-// Same physical city (external directory id / geonameid, else name — тёзки-города в
-// разных странах ≠ один город). Used by StepReturn to decide which return card looks
-// active (cosmetic only — not part of the finish derive).
-function sameCity(a, b) {
-  if (!a?.city_name || !b?.city_name) return false;
-  if (a.external_city_id != null && b.external_city_id != null) return a.external_city_id === b.external_city_id;
-  if (a.geonameid != null && b.geonameid != null) return a.geonameid === b.geonameid;
-  return a.city_name === b.city_name;
-}
+// Стабильные ссылки для пропов карты: новый массив на каждый рендер заставлял бы
+// карту перестраивать линии и контролы на каждом нажатии в шаге.
+const NO_TRANSFERS = Object.freeze([]);
+const MAP_CONTROLS = Object.freeze(['projection', 'theme']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Local YYYY-MM-DD (NOT toISOString - that converts to UTC and, in positive
-// timezones, shifts the date back a day, which broke the ±1-day stepper).
-function ymdLocal(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const da = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${da}`;
-}
-
-function addDays(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return ymdLocal(d);
-}
-
-function shortDateLabel(iso, locale = 'ru') {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return '';
-  try {
-    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(d);
-  } catch {
-    return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
-  }
-}
+// Календарная арифметика показа (`ymdLocal` / `addDays` / `cityDateRange`)
+// живёт в `@/lib/tripDates` — её читают три экрана; формат даты — общая дверь
+// `fmtDate` из `useI18nFormat()`.
 
 // Default trip start = one month ahead of today (local), YYYY-MM-DD.
 function defaultStartISO() {
@@ -133,17 +100,6 @@ function computeAutoTitle(home, cities, t) {
 // ряду и плитка вида в шторке разойтись не могут.
 // Прежний предикат `isPlannerWaypoint(city)` был вторым толкованием того же
 // факта и удалён вместе с моделью, которая его требовала.
-
-// City date-range label "1 июл – 5 июл" (a single day for a 0-night waypoint), or
-// null when the trip start isn't set yet. Shared by the city row and the map
-// tooltip so both read identically.
-function cityDateRange(city, lang) {
-  const nights = +city.nights || 0;
-  const start = city.startDate ? shortDateLabel(city.startDate, lang) : null;
-  const end = (city.startDate && nights) ? shortDateLabel(addDays(city.startDate, nights), lang) : null;
-  return start ? (end ? `${start} – ${end}` : start) : null;
-}
-
 
 // CityPicker + CityAnchorRow live in ./create/anchors (shared by the planner
 // steps and the AI panel — one picker/anchor, no circular import).
@@ -179,7 +135,7 @@ function cityDateRange(city, lang) {
 // ВИДА точки, — и подтверждение стало осмысленным вместо переспроса.
 // Ряд теперь показывает готовый узел и правит у него ровно две вещи: ночи и
 // порядок. Смена города = удалить и добавить заново — ровно как в редакторе.
-function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
+function CityRow({ num, node, isDragging, isPressing, active = false, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!node.city_name && node.latitude == null;
@@ -197,9 +153,11 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
       <Icon name="drag" size={14} />
     </span>
   );
+  // Узел пересадки — тон `transfer` плитки, пунктирный контур даёт правило
+  // `.te-row__node.tile--transfer` (одно на все ряды маршрута).
   const lead = isWaypoint
-    ? <Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>
-    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{idx + 1}</Tile>;
+    ? <Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>
+    : <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{num}</Tile>;
   const dates = isWaypoint
     ? <><Badge size="tiny">{t('tse.layover')}</Badge>{dateRange}</>
     : dateRange;
@@ -217,6 +175,7 @@ function CityRow({ idx, node, isDragging, isPressing, active = false, onArm, onC
       lead={lead}
       name={node.city_name}
       country={node.country}
+      countryCode={node.country_code}
       dates={dates}
     >
       {/* Степпер ночей — ЕДИНСТВЕННАЯ ручка вида в ряду: ноль ночей и есть
@@ -339,7 +298,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 </div>
                 <div className="grow--fit">
                   <div className="t-subheading">{c.city_name}</div>
-                  <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
+                  <div className="muted t-meta"><Country code={c.country_code} name={c.country} /> · {distLabel}</div>
                 </div>
                 {selected && (
                   <span className="tile tile--sm tile--solid tile--brand tile--round">
@@ -443,11 +402,9 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
      Старт городом не является: из него выезжают, в нём не ночуют. */
   const hasCities = cityNodesOf(nodes).length > 0;
   const hasEnd = hasExplicitEnd(nodes);
-  // Нумеруются только города: у якорей номера нет ни в редакторе, ни здесь.
-  // Номер берётся из ЗАФИКСИРОВАННОГО порядка, а не из превью перетаскивания —
-  // иначе цифры прыгали бы под пальцем. Сверка по id, а не по ссылке: хук возит
-  // те же объекты, но полагаться на это в нумерации незачем.
-  const numberOf = (node) => cityNodesOf(nodes).findIndex((n) => n.id === node.id);
+  // Номера — ОДНОЙ картой на отрисовку (правило общее с лентой ИИ, обзором и
+  // редактором); по ЗАФИКСИРОВАННОМУ порядку, не по превью перетаскивания.
+  const cityNums = visitNumbers(nodes);
 
   return (
     <div>
@@ -506,14 +463,18 @@ function StepCities({ nodes, setNodes, startDate, setStartDate, hoveredId = null
               key={n.id}
               ref={setRowRef(n.id)}
               /* Ряд без координат ховер карты не забирает: показывать нечего,
-                 пина у него нет (тот же предикат, по которому FlowMap его и не
+                 пина у него нет (тот же предикат, по которому карта его и не
                  рисует). Въезд во время перетаскивания пропускаем — FLIP возит
                  ряды под удержанным пальцем и иначе дёргал бы подсветку. */
               onMouseEnter={onHover ? () => { if (!draggingId && n.latitude != null) onHover(rowId); } : undefined}
               onMouseLeave={onHover ? () => onHover(null) : undefined}
             >
               <CityRow
-                idx={numberOf(n)}
+                /* Номер считается по ЗАФИКСИРОВАННОМУ порядку (`nodes`), а не по
+                   превью перетаскивания (`displayNodes`) — иначе цифры прыгали бы
+                   под пальцем. Правило одно с картой и лентой ИИ (`visitNumbers`:
+                   якоря и пересадки номера не получают). */
+                num={cityNums[n.id]}
                 node={n}
                 isDragging={draggingId === n.id}
                 isPressing={pressingId === n.id}
@@ -714,10 +675,14 @@ function Stat({ label, value, hint, warn }) {
 function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setTripTitle, saving, error }) {
   const t = useT();
   const { lang } = useI18n();
+  // «12 окт.» — общая дверь формата (`formatDayMonth` за `fmtDate`), не своя копия.
+  const { fmtDate } = useI18nFormat();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
+  const cityNums = visitNumbers(cities);
   const autoTitle = computeAutoTitle(home, cities, t);
-  // Экран успеха живёт не здесь, а ранним return в ManualPlanner (TRIP-520): он
-  // терминален и не должен зависеть от того, на каком шаге стоит адрес.
+  // Экран успеха живёт не здесь, а развилкой по `savedOk` в теле панели
+  // ManualPlanner (TRIP-520): он терминален и не должен зависеть от того, на
+  // каком шаге стоит адрес.
 
   return (
     <div className="col col--g6 pl-review">
@@ -752,12 +717,12 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           <div className="s">
             <Stat
               label={t('event.start')}
-              value={cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}
+              value={cities[0]?.startDate ? fmtDate(cities[0].startDate) : '—'}
               warn={!cities[0]?.startDate ? t('planner.date_required_hint') : null}
             />
           </div>
           <div className="s">
-            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
+            <Stat label={t('planner.duration')} value={`${totalNights} ${pluralize(t, totalNights, 'view.nights', lang)}`} />
           </div>
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
@@ -768,27 +733,26 @@ function StepReview({ home, cities, finishCity, cover, setCover, tripTitle, setT
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (finishCity?.city_name ? 1 : 0) })}</div>
           <div className="col col--g1">
             {home?.city_name && (
-              <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
+              <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('ai_plan.start')}`} muted />
             )}
-            {cities.map((c, i) => {
-              // Финиша-города не бывает: конец маршрута — это отдельный узел
-              // (рисуется ниже) либо его нет вовсе. Город списка всегда город.
-              const isFin = false;
+            {/* Финиша-города не бывает: конец маршрута — отдельный узел (ниже)
+                либо его нет вовсе. Номер — та же `visitNumbers`, что у шага 2
+                и ленты ИИ: пересадка номера не получает, у неё значок переезда. */}
+            {cities.map((c) => {
+              const wp = c.kind === 'waypoint';
+              const stay = wp ? t('tse.layover') : `${c.nights} ${pluralize(t, c.nights, 'view.nights', lang)}`;
               return (
                 <ReviewRow
                   key={c.id}
-                  num={isFin ? undefined : i + 1}
-                  icon={isFin ? 'flag' : undefined}
+                  num={wp ? undefined : cityNums[c.id]}
+                  icon={wp ? 'arrowSwap' : undefined}
                   name={c.city_name}
-                  sub={isFin
-                    ? `${c.country || '-'} · ${t('planner.sub_finish')}`
-                    : `${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${shortDateLabel(c.startDate, lang)}` : ''}`}
-                  muted={isFin}
+                  sub={`${c.country || '-'} · ${stay}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${fmtDate(c.startDate)}` : ''}`}
                 />
               );
             })}
             {finishCity?.city_name && (
-              <ReviewRow icon="flag" name={finishCity.city_name} sub={`${finishCity.country || ''} · ${t('planner.sub_finish')}`} muted />
+              <ReviewRow icon="flag" name={finishCity.city_name} sub={`${finishCity.country || ''} · ${t('ai_plan.end')}`} muted />
             )}
           </div>
         </div>
@@ -822,13 +786,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const isPro = isProActive(user);
-  const { isDark, toggle: toggleTheme } = useTheme();
+  const { isDark } = useTheme();
 
-  // NB: no <body> scroll-lock here. The planner shell (.flow-page) is a 100dvh
-  // overflow:hidden root — the same fixed-shell pattern as .app-shell on every
-  // other screen — so the document never scrolls and the static header stays put,
-  // including when the keyboard opens. A body position:fixed lock (tried earlier)
-  // was what made the header fly up on keyboard, so it was removed.
+  // NB: no <body> scroll-lock here. Оболочка трипа (`.trip-shell`) — фикс-шелл
+  // 100dvh с overflow:hidden: документ не скроллится, шапка стоит и при открытой
+  // клавиатуре. A body position:fixed lock (tried earlier) was what made the
+  // header fly up on keyboard, so it was removed.
 
   // 'manual' | 'ai' - only the entry screen differs; from the skeleton onward
   // both methods share the same steps.
@@ -871,7 +834,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const onComposingChange = useCallback((open) => setComposingCount((c) => c + (open ? 1 : -1)), []);
   const composing = composingCount > 0;
   // Map ↔ list linking (Map-lens parity, TRIP-337): the pin/list row hovered or
-  // selected. Ids match FlowMap's marker ids ('home' | city.id | 'finish').
+  // selected. Ids — id узлов маршрута (ими же карта адресует пины).
   const [hoveredMapId, setHoveredMapId]   = useState(null);
   const [selectedMapId, setSelectedMapId] = useState(null);
 
@@ -1028,7 +991,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // `step + location.key`; шлём только когда флоу открыт и на НОРМАЛИЗОВАННОМ шаге.
   const stepSeenRef = useRef({ key: null, fired: false });
   useEffect(() => {
-    if (!flowOpen) return;
+    if (!flowOpen || savedOk) return; // после сохранения смена адреса — не открытие шага
     const evKey = `${step}|${location.key}`;
     if (stepSeenRef.current.key === evKey) return;
     const isFirst = !stepSeenRef.current.fired;
@@ -1052,18 +1015,23 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setNodes(ns => (ns.length === 0 ? ns : recomputeDates(ns, dateStr)));
   };
 
-  // ── AI draft → shared skeleton ─────────────────────────────────────────────
-  // The AI returns a cities-only skeleton (no activities, no transfers) where
-  // each city carries kind ∈ {start, transit, end}. We honour `kind` so the AI
-  // route fills the SAME slots the manual flow uses: start → home (origin),
-  // transit → the editable cities list, end → the return leg. From there the
-  // user edits it like any manual trip; dates are re-anchored via recomputeDates.
+  // ── ИИ правит черновик ОПЕРАЦИЯМИ (TRIP-527) ──────────────────────────────
+  // Драфт живёт здесь и уходит в модель каждой репликой как данность; модель
+  // отвечает списком операций над ним (или только текстом), применяет их чистый
+  // `aiOps.applyOps` поверх той же модели маршрута, что у ручных шагов. Полной
+  // замены `setNodes(resolved)` больше нет — «поменяй один город» больше не
+  // пересобирает всё.
+  //
+  // ⚠️ СОСТОЯНИЕ ДЛЯ ПРИМЕНЕНИЯ БЕРЁТСЯ ИЗ РЕФА, а не из замыкания колбэка:
+  // `useMutation` зовёт onSuccess с опциями ТОГО рендера, где вызвали mutate,
+  // а операции применяются к тому, что на экране СЕЙЧАС. Три величины уезжают
+  // одним объектом, потому что применятор меняет их вместе (даты городов
+  // выводятся из startDate).
+  const draftRef = useRef({ nodes, startDate, title: tripTitle });
+  draftRef.current = { nodes, startDate, title: tripTitle };
 
-  // Resolve one AI city into the planner shape (coords + timezone). Shared by
-  // start / transit / end so the directory lookup lives in one place.
   // Shape one AI city into the planner shape (coords + timezone) from an already
-  // resolved `best` (or null). Geocoding is now batched in applyAiDraft via
-  // resolveCities (TRIP-145 P2), so this is pure shaping — no network here.
+  // resolved gazetteer row `best`. Pure shaping — no network here.
   const shapeAiCity = (c, idx, best) => resolveCity({
     id: Date.now() + idx,
     external_city_id: best?.external_city_id || null,
@@ -1080,84 +1048,38 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     longitude: best?.longitude ?? null,
   }, lang);
   /* ⚠️ ДОВОДКА (имя страны из кода + таймзона из координат) НЕ ПИШЕТСЯ ЗДЕСЬ, а
-     идёт общим шагом `cities/resolveCity` — тем же, что у пикеров. Своя копия
-     жила тут ровно потому, что справочник отдаёт СТРОКУ, а не готовый узел; две
-     копии одного шага и разъезжаются молча. Нерезолвнутый город (ИИ назвал,
-     справочник не нашёл) остаётся без таймзоны, а не получает выдуманный UTC —
-     за это отвечает сам шаг. */
+     идёт общим шагом `cities/resolveCity` — тем же, что у пикеров. Нерезолвнутый
+     город (ИИ назвал, справочник не нашёл) остаётся без таймзоны и координат,
+     как при ручном вводе, и краснеет на шаге 2 — а не получает выдуманный UTC. */
 
-  const applyAiDraft = async (d) => {
-    const dc = Array.isArray(d?.cities) ? d.cities : [];
-    // Partition by kind. Missing/unknown kind defaults to transit. Only the
-    // first start / last end are honoured (a trip has one origin + one return).
-    const startSrc = dc.find((c) => c?.kind === 'start') || null;
-    const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
-    const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
-
-    // Resolve ALL cities in ONE `search_gazetteer_batch` RPC (TRIP-214): the
-    // gazetteer resolves the whole list server-side in a single round-trip/plan,
-    // replacing the old per-city Promise.all burst (no concurrency limit → pool
-    // storm on a long AI route). Order: [start?, end?, ...transit].
-    const order = [];
-    if (startSrc) order.push(startSrc);
-    if (endSrc) order.push(endSrc);
-    transitSrc.forEach((c) => order.push(c));
-    // Resolve by English name + country_code: the gazetteer matches the English
-    // name first (small towns that miss in Cyrillic still resolve) and keeps
-    // same-country matches. The Russian city_name from the AI is what we
-    // display/save.
-    const lists = await resolveCities(
-      order.map((c) => ({
-        city_name: c.city_name,
-        name_en: c.city_name_en,
-        country: c.country,
-        country_code: c.country_code,
-      })),
-      lang || 'ru',
-    );
-    let oi = 0;
-    const startCity = startSrc ? shapeAiCity(startSrc, 0, lists[oi++]?.[0] || null) : null;
-    const endCity = endSrc ? shapeAiCity(endSrc, 1, lists[oi++]?.[0] || null) : null;
-    const transitResolved = [];
-    for (let i = 0; i < transitSrc.length; i++) {
-      const c = transitSrc[i];
-      const base = shapeAiCity(c, i + 2, lists[oi++]?.[0] || null);
-      const nights = c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1;
-      transitResolved.push({ ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) });
-    }
-
-    // ★ ЧЕРНОВИК ИИ СОБИРАЕТСЯ В ТОТ ЖЕ СПИСОК, что и ручной маршрут — одной
-    // фабрикой и одними правилами вставки. Прежде он раскладывался по трём
-    // переменным, то есть был четвёртым местом, знающим форму маршрута.
-    const anchor = transitResolved[0]?.startDate || defaultStartISO();
-    let draftNodes = [];
-    if (startCity?.city_name) draftNodes = insertNode(draftNodes, makeNode(startCity, 'start')) || draftNodes;
-    for (const c of transitResolved) {
-      // Ночи ведёт ВИД: ноль ночей от ИИ — это пересадка, и вид ей ставит модель.
-      const node = withNights(makeNode(c, 'transit', { nights: c.nights }), c.nights);
-      draftNodes = insertNode(draftNodes, node) || draftNodes;
-    }
-    // Финиш — только если ИИ дал его ЯВНО отдельным узлом `kind:'end'`. Не дал —
-    // узла не выдумываем: конец маршрута выберут на шаге возврата, а пока его не
-    // выбрали, маршрут кончается последним городом («останусь»).
-    if (endCity?.city_name) draftNodes = insertNode(draftNodes, makeNode(endCity, 'end')) || draftNodes;
-    const resolvedNodes = recomputeDates(draftNodes, anchor);
-    setNodes(resolvedNodes);
-    setStartDateRaw(anchor);
-
-    const resolvedHome = startOf(resolvedNodes);
-    const resolvedCities = cityNodesOf(resolvedNodes);
-
-    if (d?.title) setTripTitle(d.title);
-    // Return the resolved draft so the caller can snapshot it into the chat message
-    // (each assistant turn shows the itinerary it proposed).
-    return { home: resolvedHome, cities: resolvedCities, end: endOf(resolvedNodes), title: d?.title || '' };
+  // Города из операций → ОДИН заход в газеттир, в порядке потребления
+  // применятором (`citiesInOps` и `applyOps` обходят операции одинаково, это
+  // запинено тестом). Не нашёлся — `null`, применятор возьмёт имя из операции.
+  //
+  // ★ ГОРОД МОЖЕТ ПРИЕХАТЬ С КЛЮЧОМ (TRIP-524), и это НЕ вторая дорога: ключ —
+  // просто самая точная форма того же вопроса «резолвни этот город». Дверь одна
+  // (`resolveCities`), и она сама берёт строку по ключу вместо поиска, когда
+  // ключ есть. Модель выбирает город инструментом справочника, ВИДЯ кандидатов
+  // вместе с регионом и координатами, — выбор по контексту маршрута резолверу
+  // недоступен по построению: он видит одно имя и страну.
+  const resolveOpCities = async (ops) => {
+    const want = citiesInOps(ops);
+    if (want.length === 0) return [];
+    const lists = await resolveCities(want, lang || 'ru');
+    return want.map((c, i) => {
+      const best = lists[i]?.[0];
+      return best ? shapeAiCity(c, i, best) : null;
+    });
   };
 
   const planMut = useMutation({
     mutationFn: async ({ promptText }) => {
+      const draft = draftRef.current;
       const { data, error: fnErr, code } = await invokeFn('planTripWithAi', {
-        body: { sessionId, prompt: promptText, language: lang || 'ru' },
+        body: {
+          sessionId, prompt: promptText, language: lang || 'ru',
+          draft: toDraftPayload(draft.nodes, draft.startDate, draft.title),
+        },
       });
       if (fnErr) {
         // Attach the machine `code` and throw the ORIGINAL error: invokeFn stamped
@@ -1181,20 +1103,32 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     },
     onSuccess: async (data, _vars, ctx) => {
       const out = data?.output || {};
-      const full = await applyAiDraft(out.draft || {});
-      // The bot's reply = its text + a DISPLAY-ONLY snapshot of the itinerary it
-      // proposed (name / country / nights only — not the full resolved city objects
-      // with coords/tz/ids), so a multi-turn transcript in sessionStorage stays small.
-      const draft = {
-        home: full.home ? { city_name: full.home.city_name, country_code: full.home.country_code } : null,
-        cities: (full.cities || []).map((c) => ({ id: c.id, city_name: c.city_name, country: c.country, nights: c.nights })),
-        end: full.end ? { city_name: full.end.city_name, country: full.end.country, country_code: full.end.country_code } : null,
-      };
-      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '', draft }]);
-      setAiState('draft');
+      const ops = Array.isArray(out.ops) ? out.ops : [];
+      const resolved = await resolveOpCities(ops);
+      const r = applyOps(draftRef.current, ops, { cities: resolved, today: ymdLocal(new Date()) });
+      setNodes(r.nodes);
+      setStartDateRaw(r.startDate);
+      setTripTitle(r.title);
+      // Ответ бота = его текст. Снимка маршрута в сообщении нет: маршрут в
+      // ленте один и живой (`PanelAi`, от `nodes`).
+      setAiMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: out.ai_comment || '' }]);
+      // Отказ применятора — расхождение с тем, что бот назвал сделанным. Человеку
+      // под чужим текстом его не дописываем (TRIP-527, разбор с Pavel): это
+      // сигнал для нас — в PostHog и в Sentry, с причинами и операциями.
+      if (r.rejected.length) {
+        track('ai_ops_rejected', { reasons: r.rejected.map((x) => `${x.op}:${x.reason}`) });
+        Sentry.captureException(new Error('ai planner: ops rejected by applicator'), {
+          tags: { feature: 'ai_planner' },
+          contexts: { ops: { rejected: r.rejected, count: ops.length } },
+        });
+      }
+      // «Далее» открыто, когда в маршруте есть город — независимо от того, был
+      // ли последний ответ с операциями или просто разговором.
+      const cityCount = cityNodesOf(r.nodes).length;
+      setAiState(cityCount ? 'draft' : 'prompt');
       track('ai_plan_returned', {
-        result: 'ok', refine: ctx?.refine,
-        city_count: (full.cities || []).length, duration_ms: elapsedMs(ctx?.startedAt),
+        result: 'ok', refine: ctx?.refine, city_count: cityCount, duration_ms: elapsedMs(ctx?.startedAt),
+        ops_applied: r.applied.length, ops_rejected: r.rejected.length, comment_only: ops.length === 0,
       });
     },
     onError: (err, _vars, ctx) => {
@@ -1273,6 +1207,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // Маршрут (home/endNode/cities/finishCity/citiesValid) выведен из `nodes` выше,
   // у деривации шага. Автозаголовок читает те же узлы.
   const autoTitle = computeAutoTitle(home, cities, t);
+  const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
 
   // ── Ручки записи маршрута ──────────────────────────────────────────────────
   // Шаги 1 и 3 пишут в ТОТ ЖЕ список, что шаг 2. Своих переменных у них больше
@@ -1295,16 +1230,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // локальный флаг шага, а не факт маршрута.
   const clearFinishNode = () => setNodes(ns => recomputeDates(clearFinish(ns), startDate));
 
-  // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed the same
-  // way FlowMap tags its pins ('home' | city.id | 'finish'). A city's date range is
-  // start..start+nights (single day for a 0-night waypoint); anchors show name only.
+  // Map tooltip lookup: id → { lng, lat, countryCode, name, dates }, keyed by NODE
+  // id — тем же, которым карта (`MapView`, общий с трипом) адресует пины. Даты — у
+  // городов (start..start+nights, один день у пересадки); якоря — только имя.
   const mapPointById = useMemo(() => {
     const m = {};
-    if (home?.latitude != null) m.home = { lng: home.longitude, lat: home.latitude, countryCode: home.country_code, name: home.city_name, dates: null };
-    cities.forEach((c) => { if (c.latitude != null) m[String(c.id)] = { lng: c.longitude, lat: c.latitude, countryCode: c.country_code, name: c.city_name, dates: cityDateRange(c, lang) }; });
-    if (finishCity?.latitude != null) m.finish = { lng: finishCity.longitude, lat: finishCity.latitude, countryCode: finishCity.country_code, name: finishCity.city_name, dates: null };
+    nodes.forEach((n) => {
+      if (n.latitude == null) return;
+      m[String(n.id)] = { lng: n.longitude, lat: n.latitude, countryCode: n.country_code, name: n.city_name, dates: isAnchorNode(n) ? null : cityDateRange(n, lang) };
+    });
     return m;
-  }, [home, cities, finishCity, lang]);
+  }, [nodes, lang]);
   // The tooltip follows the hovered pin/row, otherwise the selected one.
   const activeMapId = hoveredMapId || selectedMapId;
   const cityBadge = activeMapId ? mapPointById[activeMapId] || null : null;
@@ -1420,6 +1356,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // ходил всегда. `prefetchQuery` ошибку не пробрасывает.
       qc.prefetchQuery(tripShellQuery(trip.id));
       qc.prefetchQuery(tripContentQuery(trip.id));
+      // Тот же прогрев — для КОДА экрана: TripView едет отдельным чанком
+      // (TRIP-445), и без этого первый вход в трип за сессию ждал бы его под
+      // Suspense. Vite склеивает динамические импорты одного модуля в один чанк.
+      // Ошибку глотаем намеренно (как в `prefetchZoneNeighbours` сайтовой зоны):
+      // предзагрузка — ускорение, а не функция, и упавший чанк обязан молчать
+      // здесь, а не всплывать необработанным реджектом — за экран отвечает
+      // Suspense самого TripView.
+      import('@/pages/TripView').catch(() => {});
     } catch (err) {
       console.error('Failed to save trip:', err);
       track('trip_create_failed', { method, reason: err?.message || 'unknown' });
@@ -1430,91 +1374,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       setSaving(false);
     }
   };
-
-  // ── Экран успеха — ТЕРМИНАЛЬНОЕ состояние, не шаг (TRIP-520) ────────────────
-  // Раньше успех рисовал StepReview, то есть жил только на шаге `review`; с
-  // шагами в истории «назад» после сохранения попал бы на `cities` — и форма
-  // «Создать» ожила бы над уже созданным трипом. Ранний return делает `savedOk`
-  // независимым от шага и старше лимит-гейта (тот и так guard-ит `!savedOk`).
-  if (savedOk) {
-    const displayTitle = tripTitle || autoTitle;
-    const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
-    return (
-      <div className="flow-page">
-        <AppHeader
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onBack={() => nav('/trips')}
-          backTitle={t('notif.to_collection')}
-        />
-        <div className="grow row row--j-center">
-          <EmptyState
-            icon="check"
-            kind="success"
-            title={t('planner.created_title')}
-            body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
-            action={(
-              <>
-                {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
-                    `?lens=` пишем адресом, `state.from` — одноразовый вход. */}
-                <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`, { state: { from: 'create' } })}>{t('planner.open_trip')}</Btn>
-                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
-              </>
-            )}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // ── Limit guard ───────────────────────────────────────────────────────────
-  // The guard gates ENTERING / continuing creation while a free user is at the
-  // cap — it must NOT override the terminal success screen. Saving the trip
-  // raises the active count and invalidates the limit cache (see above), so the
-  // refetch flips isOverLimit→true a moment after savedOk. Without `!savedOk`
-  // the success screen would be replaced by the "limit reached" blocker a second
-  // after it appears. savedOk can only be true if the user was UNDER the limit
-  // at save time (the blocker returns before the form), so suppressing it here is
-  // safe by construction.
-  if (!isPro && checkingLimit && !savedOk) {
-    return (
-      // Оболочка маршрута - та же .flow-page, что у самого планировщика ниже.
-      <div className="flow-page row row--j-center">
-        <div className="spin spin--ring spin--xl" />
-      </div>
-    );
-  }
-
-  if (isOverLimit && !savedOk) {
-    return (
-      <div className="flow-page">
-        <AppHeader
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onBack={() => nav('/trips')}
-          backTitle={t('notif.to_collection')}
-        />
-        <div className="grow row row--j-center">
-          <EmptyState
-            icon="lock"
-            kind="warning"
-            title={t('planner.limit_title')}
-            body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
-            action={(
-              <>
-                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
-                <Btn variant="primary" onClick={() => goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' })}>{t('sub.go_pro')}</Btn>
-              </>
-            )}
-          />
-        </div>
-      </div>
-    );
-  }
 
   // ── Footer (single, lifted out of the steps) ───────────────────────────────
   // One Back / Reset / Next|Save bar pinned to the bottom of the right card,
@@ -1543,7 +1402,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // ── Одна «назад» на все двери (TRIP-520) ───────────────────────────────────
   // Переписка с ботом — тоже работа, и она стоила денег: без второго слагаемого
   // неудачная генерация «работой» не считается.
-  const hasWork = hasDraftData || (isAi && aiMessages.length > 1);
+  // После сохранения терять нечего: уход из флоу не спрашивает.
+  const hasWork = !savedOk && (hasDraftData || (isAi && aiMessages.length > 1));
   // Уход из флоу спрашивает, переход между шагами — нет. Один гейт на все девять
   // дверей; механика конфирма — та же, что у `requestReset`.
   const confirmLeave = async () => !hasWork || await confirm({
@@ -1553,19 +1413,106 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   });
   // Глубина текущей записи истории решает, «назад» это шаг или выход (а не
   // `isFirstStep`: он врёт после прыжка по рейлу на home и на прямом заходе по
-  // `?step=`). savedOk сюда не попадает — экран успеха отрисован ранним return
-  // выше, у него своя «назад» на `/trips`.
-  const backDepth = location.state?.depth ?? 0;
+  // `?step=`). `savedOk` глушит глубину: у успеха «назад» всегда выход на `/trips`.
+  const backDepth = savedOk ? 0 : (location.state?.depth ?? 0);
   // Тултип/aria стрелки честны к тому, что она делает: на дне флоу — выход «К
   // коллекции», глубже — «Назад» (шаг). Иначе скринридер объявлял бы «К
   // коллекции» для кнопки, делающей шаг назад (item 5 ревью).
   const backLabel = backDepth > 0 ? t('planner.back') : t('notif.to_collection');
   const requestBack = async () => {
+    if (savedOk) return nav('/trips');
     const action = resolveBack({ depth: backDepth, enteredByPush });
     if (action === 'step') return nav(-1);          // шаг назад внутри флоу, без конфирма
     if (!(await confirmLeave())) return;             // выход — спрашиваем, если есть что терять
     return action === 'exit-history' ? nav(-1) : nav('/trips');
   };
+
+  // ── Оболочка (TripShell, TRIP-520) ──────────────────────────────────────────
+  // Визард — экран трипа, у которого трипа ещё нет: шапку, рейл и шелл карты
+  // рисует общая оболочка, сюда уходят факты. «Назад» — своё действие визарда
+  // (шаг истории с конфирмом ухода внутри), поэтому едет колбэком целиком.
+  // Экран лимита/проверки лимита поверхности не объявляет — карты там нет.
+  const blocked = !savedOk && (isOverLimit || (!isPro && checkingLimit));
+  useShellFacts(
+    { mode: 'create', title: isAi ? t('planner.step_home_ai') : t('trips.new'), backTitle: blocked ? t('notif.to_collection') : backLabel },
+    { onBack: blocked ? () => nav('/trips') : requestBack, confirmLeave },
+  );
+  // Поверхность карты: конфиг шелла (детент/свёрнутость — состояние ЭКРАНА: шаг
+  // может осознанно опустить шит) и пропы общего `MapView`. Узлы маршрута едут в
+  // карту КАК ЕСТЬ (тот же вид, что у визитов трипа: `kind`/координаты/id), без
+  // переездов — все плечи пунктирные, транспорт добавляется уже в трипе.
+  useShellSurface(
+    blocked ? null : {
+      panelLabel: t('trips.new'),
+      detent, onDetentChange: setDetent,
+      collapsed, onCollapsedChange: setCollapsed,
+      collapseLabel: t('common.panel_collapse'), expandLabel: t('common.panel_expand'),
+    },
+    {
+      visits: nodes, transfers: NO_TRANSFERS,
+      // Контролы поверх карты: проекция + тема. Старт-финиша здесь НЕТ (решение
+      // Pavel): в создании маршрута дом и финиш — то, что пользователь прямо сейчас
+      // выбирает, прятать их нечем и незачем. Открывается на глобусе (TRIP-337).
+      mapControls: MAP_CONTROLS, initialProjection: 'globe',
+      // Карта — основная поверхность экрана: гейта «двумя пальцами» тут нет.
+      cooperativeGestures: false,
+      colorScheme: isDark ? 'DARK' : 'LIGHT',
+      hoveredVisitId: hoveredMapId, selectedVisitId: selectedMapId, cityBadge,
+      // Двусторонняя связка с рядами шага: карта отдаёт узлы под пином, ряды
+      // держат id. Повторный клик по тому же пину снимает выбор; клик по пустой
+      // карте — тоже (общее поведение всех карт).
+      onCityHover: (pts) => { const v = cityUnderPin(pts); setHoveredMapId(v ? String(v.id) : null); },
+      onCityClick: (pts) => { const v = cityUnderPin(pts); if (v) setSelectedMapId((cur) => (cur === String(v.id) ? null : String(v.id))); },
+      onMapClick: () => setSelectedMapId(null),
+    },
+  );
+
+  // ── Экран успеха — ТЕРМИНАЛЬНОЕ состояние, не шаг (TRIP-520) ────────────────
+  // `savedOk` живёт в памяти визарда, а не в адресе: пока визард смонтирован,
+  // «назад» по записям шагов меняет `?step=`, но рисуется по-прежнему успех —
+  // форма «Создать» над созданным трипом не оживает ни на одном шаге. Рисуется
+  // он В ТОЙ ЖЕ ОБОЛОЧКЕ, что и шаги (карта + панель/шит + прогресс): успех —
+  // финал флоу, а не отдельная страница; своя обвязка (AppHeader на пустом
+  // листе) была регрессом облика. Ниже он входит в BODY, а не ранним return.
+
+  // ── Limit guard ───────────────────────────────────────────────────────────
+  // The guard gates ENTERING / continuing creation while a free user is at the
+  // cap — it must NOT override the terminal success screen. Saving the trip
+  // raises the active count and invalidates the limit cache (see above), so the
+  // refetch flips isOverLimit→true a moment after savedOk. Without `!savedOk`
+  // the success screen would be replaced by the "limit reached" blocker a second
+  // after it appears. savedOk can only be true if the user was UNDER the limit
+  // at save time (the blocker returns before the form), so suppressing it here is
+  // safe by construction.
+  // Шапка и рейл здесь — от оболочки (факты опубликованы выше); экран рисует
+  // только своё содержимое в теле. Условие — тот же `blocked`, которым снята
+  // поверхность: ответ про лимит ещё едет — спиннер, приехал и лимит выбран —
+  // заглушка (порядок ветвей тот же, что был у двух отдельных return'ов).
+  if (blocked) {
+    if (!isPro && checkingLimit) {
+      return (
+        <div className="row row--j-center">
+          <div className="spin spin--ring spin--xl" />
+        </div>
+      );
+    }
+    return (
+      <div className="row row--j-center">
+        <EmptyState
+          icon="lock"
+          kind="warning"
+          title={t('planner.limit_title')}
+          body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
+          action={(
+            <>
+              <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
+              <Btn variant="primary" onClick={() => goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' })}>{t('sub.go_pro')}</Btn>
+            </>
+          )}
+        />
+      </div>
+    );
+  }
 
   let primaryLabel = t('planner.next');
   let primaryAction = goNext;
@@ -1590,8 +1537,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     primaryLabel = saving ? t('planner.saving_btn') : t('planner.save_trip');
     primaryAction = handleSave;
     primaryDisabled = saving;
-    if (savedOk) showFooter = false; // the success screen owns its own actions
   }
+  if (savedOk) showFooter = false; // успех владеет своими действиями, шаг адреса не важен
 
   // ── Main render ───────────────────────────────────────────────────────────
   // Содержимое панели разложено по слотам шелла: ШАПКА (прогресс) всегда на
@@ -1602,38 +1549,62 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // `.flow-lp-b` — типографский контекст шага (ритм заголовков/подзаголовков),
     // а не раскладка: раскладку и скролл держит тело шелла.
     <div className="flow-lp-b">
-        {step === 'home' && (isAi ? (
-          <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
-        ) : (
-          <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
-        ))}
-        {step === 'cities' && (
-          <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={onComposingChange} />
-        )}
-        {step === 'return' && (
-          <StepReturn
-            home={home}
-            lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
-            endNode={endNode}
-            onFinishHome={() => setFinishCity(home)}
-            onFinishCity={setFinishCity}
-            onClearFinish={clearFinishNode}
-          />
-        )}
-        {step === 'review' && (
-          <StepReview
-            home={home}
-            cities={cities}
-            finishCity={finishCity}
-            cover={cover}
-            setCover={setCover}
-            tripTitle={tripTitle}
-            setTripTitle={setTripTitle}
-            saving={saving}
-            error={error}
-          />
-        )}
-
+      {/* Успех ЗАМЕЩАЕТ шаг, а не встаёт над ним, поэтому шаги — вторая ветка
+          одной развилки: условие `savedOk` названо ОДИН раз, и ни один шаг не
+          может забыть его повторить. */}
+      {savedOk ? (
+        <EmptyState
+          art="trip-created"
+          kind="success"
+          title={t('planner.created_title')}
+          body={t('planner.created_desc', { title: tripTitle || autoTitle, cities: cities.length, citiesWord: pluralize(t, cities.length, 'trip.cities_count', lang), nights: totalNights, nightsWord: pluralize(t, totalNights, 'view.nights', lang) })}
+          action={(
+            <>
+              {/* Ведёт в СЕКЦИЮ РЕДАКТОРА (маршрут только собран, дальше брони);
+                  `?lens=` пишем адресом. Чанк TripView и его запросы прогреты при
+                  сохранении, переход идёт транзишном роутера в ТОЙ ЖЕ оболочке:
+                  рейл, шапка, панель и карта живут дальше, а вход оболочка
+                  распознаёт сама по смене режима (`data-entering`). */}
+              <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}?lens=route`)}>{t('planner.open_trip')}</Btn>
+              <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
+            </>
+          )}
+        />
+      ) : (
+        <>
+          {step === 'home' && (isAi ? (
+            <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} nodes={nodes} />
+          ) : (
+            <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
+          ))}
+          {step === 'cities' && (
+            <StepCities nodes={nodes} setNodes={setNodes} startDate={startDate} setStartDate={setStartDate} hoveredId={hoveredMapId} selectedId={selectedMapId} onHover={setHoveredMapId} onComposingChange={onComposingChange} />
+          )}
+          {step === 'return' && (
+            <StepReturn
+              home={home}
+              lastCityName={lastCity?.city_name || t('planner.last_city_fallback')}
+              endNode={endNode}
+              onFinishHome={() => setFinishCity(home)}
+              onFinishCity={setFinishCity}
+              onClearFinish={clearFinishNode}
+            />
+          )}
+          {step === 'review' && (
+            <StepReview
+              home={home}
+              cities={cities}
+              finishCity={finishCity}
+              cover={cover}
+              setCover={setCover}
+              tripTitle={tripTitle}
+              setTripTitle={setTripTitle}
+              saving={saving}
+              error={error}
+            />
+          )}
+        </>
+      )}
     </div>
   );
   // ★ КОМПОЗЕР — В СЛОТЕ ДЕЙСТВИЙ, А НЕ В ТЕЛЕ. Тело виджета СКРОЛЛИТСЯ, и всё,
@@ -1643,7 +1614,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // для того и заведён: он стоит СНАРУЖИ скролла и держит док снизу.
   // На AI-шаге кнопок шага нет (`showFooter === false`) — «Далее» слита в сам
   // композер, — поэтому слот занимает он один, а не они вдвоём.
-  const FOOTER = (step === 'home' && isAi) ? (
+  // После сохранения слот пуст: успех владеет своими действиями (см. `showFooter`).
+  const FOOTER = (step === 'home' && isAi && !savedOk) ? (
     <ChatComposer
       className="chat-composer--ai"
       hideMention
@@ -1668,10 +1640,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               порождал блокер 1. */}
           {backDepth > 0 && <Btn variant="secondary" onClick={requestBack} disabled={saving}>{t('planner.back')}</Btn>}
           {/* Reset is a VISIBLE, low-emphasis text button here (not a hidden
-              icon in the header) — nav actions all live in the action bar. It
-              also shows on the AI entry step (step 1), where a conversation can
-              already have built a draft to clear. */}
-          {(!isFirstStep || (isAi && step === 'home')) && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+              icon in the header) — nav actions all live in the action bar. На
+              AI-шаге футера нет (его место занимает композер), там сброс стоит
+              в шапке панели рядом с прогрессом. */}
+          {!isFirstStep && <Btn variant="quiet" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
           <div className="flow-foot__spacer grow" />
           <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
         </div>
@@ -1679,89 +1651,61 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     </>
   );
 
+  // ★ ВСЁ СОДЕРЖИМОЕ — В СЛОТЫ ОБОЛОЧКИ. Своей разметки страницы у визарда нет:
+  // шапка/рейл/шелл карты — у `TripShell`, карта — общий `MapView` (пропы
+  // опубликованы выше). Здесь только то, что принадлежит шагу: прогресс в шапке
+  // панели, тело, футер с действиями, круглая «назад» над картой (телефон, где
+  // шапки нет) и пилюля статуса.
   return (
-    <div className="flow-page">
-      {/* Header */}
-      <AppHeader
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={requestBack}
-        backTitle={backLabel}
-        title={isAi ? t('planner.step_home_ai') : t('trips.new')}
-        confirmLeave={confirmLeave}
-      />
-
-      {/* Раскладку «карта во всю площадь + панель поверх / шит на телефоне»
-          держит примитив <MapShell>: он же считает, сколько места закрыто, и
-          отдаёт это карте отступами камеры. Своих `.flow-grid/-mapcol/-editcol`
-          у шага больше нет — они были третьей копией одной и той же раскладки. */}
-      <MapShell
-        panelLabel={t('trips.new')}
-        detent={detent}
-        onDetentChange={setDetent}
-        collapsed={collapsed}
-        onCollapsedChange={setCollapsed}
-        collapseLabel={t('common.panel_collapse')}
-        expandLabel={t('common.panel_expand')}
-        panelHeader={(
-          <div className="flow-lp-h">
-            {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
-                "next" hint wraps INSIDE this column instead of overflowing and
-                shoving the reset control off the narrow mobile sheet header. */}
-            <div className="grow--fit">
-              <FlowProgress
-                steps={visibleSteps}
-                current={stepIdx}
-                accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-                onJump={(i) => setStep(visibleSteps[i].id, 'jump')}
-              />
-            </div>
+    <>
+      <ShellSlot name="panelHead">
+        <div className="flow-lp-h">
+          {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
+              "next" hint wraps INSIDE this column instead of overflowing and
+              shoving the reset control off the narrow mobile sheet header. */}
+          <div className="grow--fit">
+            <FlowProgress
+              steps={visibleSteps}
+              current={savedOk ? visibleSteps.length - 1 : stepIdx}
+              accent={isAi ? 'var(--ai)' : 'var(--brand)'}
+              onJump={savedOk ? undefined : (i) => setStep(visibleSteps[i].id, 'jump')}
+            />
           </div>
-        )}
-        panelFooter={FOOTER}
-        panel={BODY}
-        // Закрытая площадь приезжает камере отступом вьюпорта там, где она
-        // режет ширину (десктоп); на телефоне шит режет высоту, и её забирает
-        // сам слот — разбор в `mapShellInsets`.
-        map={(view) => (
+          {/* Сброс на AI-шаге (TRIP-527): футер здесь занят композером, а
+              переписка уже могла собрать маршрут, который хочется стереть.
+              Та же ручка `requestReset` (с подтверждением), что у футера
+              остальных шагов — второго сброса нет. */}
+          {isAi && step === 'home' && !savedOk && (
+            <IconBtn icon="refresh" tone="outline" ariaLabel={t('planner.reset')} onClick={requestReset} disabled={saving} />
+          )}
+        </div>
+      </ShellSlot>
+      <ShellSlot name="panelBody">{BODY}</ShellSlot>
+      <ShellSlot name="panelFoot">{FOOTER}</ShellSlot>
+      <ShellSlot name="mapOverlay">
+        {/* Floating round back control — shown only on the phone shell (the app
+            header is off-screen there); the canon `.map-back` position/visibility
+            live in CSS. */}
+        <IconBtn
+          className="map-back"
+          icon="back"
+          round
+          tone="outline"
+          ariaLabel={backLabel}
+          onClick={requestBack}
+        />
+      </ShellSlot>
+      {/* Пилюля «N городов · M ночей» — в полосе статуса шелла: он её меряет и
+          отдаёт кадру как закрытое снизу, чтобы нижний город не уезжал под неё. */}
+      <ShellSlot name="status">
+        {totalNights > 0 && (
           <>
-            {/* Floating round back control — shown only on the phone shell (the app
-                header is removed there); the canon `.map-back` position/visibility
-                live in CSS. */}
-            <IconBtn
-              className="map-back"
-              icon="back"
-              round
-              tone="outline"
-              ariaLabel={backLabel}
-              onClick={requestBack}
-            />
-            <FlowMap
-              view={view}
-              colorScheme={isDark ? 'DARK' : 'LIGHT'}
-              home={home}
-              cities={cities}
-              // Always pass the finish city (it feeds the camera framing). DRAW the
-              // finish pin + leg when it's ALREADY DECIDED — the AI put it in the draft,
-              // or the user picked it — so a known finish shows immediately (incl. on
-              /* Финиш — это узел, и рисуется он ровно тогда, когда узел есть.
-                 Прежние `drawFinish`/`isStay` были следствием молчаливого дефолта
-                 «домой» и второго вида финиша: одному надо было не рисовать линию
-                 заранее, другому — не рисовать пин поверх города. Ни того, ни
-                 другого больше нет. */
-              finishCity={finishCity}
-              hoveredId={hoveredMapId}
-              selectedId={selectedMapId}
-              cityBadge={cityBadge}
-              onCityHover={setHoveredMapId}
-              onCityClick={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
-              onMapClick={() => setSelectedMapId(null)}
-            />
+            <b>{cities.length}</b> {pluralize(t, cities.length, 'trip.cities_count', lang)}
+            <span className="muted-2">·</span>
+            <b>{totalNights}</b> {pluralize(t, totalNights, 'view.nights', lang)}
           </>
         )}
-      />
-    </div>
+      </ShellSlot>
+    </>
   );
 }

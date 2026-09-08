@@ -19,6 +19,19 @@ import { parseNaive } from './naive-time.js';
  * «пояса тут не нужны вообще» и рождало очередную наивную копию длительности.
  */
 
+/**
+ * Календарная дата `YYYY-MM-DD` без времени — предикат формы для графа
+ * ПРИЛОЖЕНИЯ (свёл сюда копию из `aiOps`). Форма, не календарь: `2026-02-31`
+ * пройдёт, реальность даты проверяет тот, кому она важна.
+ *
+ * ★ Ровно ОДИН читатель эту дверь не берёт и держит свою копию — `i18n/dayMonth`:
+ * он сидит в синхронном графе лендинга, а этот модуль тянет `naive-time.js` →
+ * luxon, то есть импорт отсюда вернул бы чанк luxon в `modulepreload` документа
+ * (замер и причина — в шапке `dayMonth.js`).
+ * @param {unknown} v
+ */
+export const isYmd = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
 // Convert datetime-local string ("yyyy-MM-dd'T'HH:mm") → ISO with trailing Z,
 // preserving wall-clock digits (no UTC offset math).
 export function localToUtc(localDateTime, _ianaTz) {

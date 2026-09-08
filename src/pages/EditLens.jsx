@@ -215,18 +215,20 @@ import { DRAWER_EXIT_MS } from '@/hooks/usePresence';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
-import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
+import { sortVisits, sameCity, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { tripDuration } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Chip, Card, MapShell, Tile, PageHead, Tooltip, useToast } from '../design/index';
+import { Badge, Btn, Chip, Card, Skeleton, Tile, PageHead, Tooltip, useToast } from '../design/index';
 import { Row, Trunc } from '../design/Layout';
 import CityAdder from '@/components/cities/CityAdder';
 import { CityAnchorRow } from '@/pages/create/anchors';
+import { isAnchorNode, visitNumbers } from '@/pages/create/routeModel';
+import { cityUnderPin } from '@/lib/map/markers';
 import { useTheme } from '@/lib/ThemeContext';
 import EventDrawerHost from '@/components/common/EventDrawerHost';
-import MapView from '@/components/views/MapView';
+import { ShellSlot, useShellSurface } from '@/components/trips/TripShellContext';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
@@ -250,6 +252,8 @@ import { transferKind } from '@/lib/transport';
 // panelOverlay): стабильная ссылка на модуле, чтобы клон уходящего узла не
 // пересоздавал колбэк каждый кадр.
 const NOOP = () => {};
+// Стабильная ссылка: новый массив на каждый рендер перестраивал бы плашку контролов.
+const EDIT_MAP_CONTROLS = Object.freeze(['projection', 'theme', 'se']);
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
 // Calendar-day helpers. nights/gap are counted by DATE (not by the raw timestamp),
@@ -258,7 +262,9 @@ const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
-const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
+// Якорь маршрута — общий предикат модели маршрута (`routeModel`), кого адресует
+// пин — общий предикат карт (`lib/map/markers`): по одной копии на репо.
+const isAnchor = isAnchorNode;
 // A city added in the editor but not yet persisted carries a 'tmp-…' id (no real uuid
 // until add_city inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is persisted.
@@ -618,6 +624,9 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const liveHotels = useMemo(() => (content?.hotels || []), [content]);
   const liveActivities = useMemo(() => (content?.activities || []), [content]);
   const liveTransfers = useMemo(() => (content?.transfers || []), [content]);
+  // Города для КАРТЫ, пока драфта ещё нет (content едет): тот же построитель, что
+  // и у драфта, без переездов — карте нужны точки и порядок, а не зазоры дней.
+  const shellNodes = useMemo(() => (shell ? buildDraft(shell, [], lang).nodes : []), [shell, lang]);
   // While creating a transfer, draw a synthetic leg on the map (shaped by the
   // picked transport type) so the route appears instantly, before saving.
   const mapTransfers = useMemo(() => {
@@ -881,18 +890,31 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   //   право на редактор проверил реестр секций (canAccess: clearsStep(step,'editor')), и
   //   он же не пускает сюда по прямому адресу - resolveSection подменит
   //   недоступную секцию дефолтной.
-  // Осталась ОДНА собственная проверка: без content драфт не построить.
-  if (!draft) return null;
+  // Осталась ОДНА собственная развилка: без content'а драфт не построить.
+  //
+  // ★ КАРТА ПРИНАДЛЕЖИТ СЕКЦИИ, А ПАНЕЛЬ — ДАННЫМ. Пока драфта нет, секция всё
+  // равно рисует СВОЮ оболочку (`MapShell` + живой `MapView`), а скелетон
+  // занимает только панель. Раньше на загрузке стоял отдельный скелетон со
+  // своим `MapShell` и пустым слотом карты (TripView), то есть у секции было
+  // две оболочки, сменявшие друг друга по состоянию загрузки, — и инстанс
+  // карты (один на приложение, MapProvider) на это время парковался за экран.
+  // На переходе «создал трип → открыть трип» это выглядело так: карта
+  // исчезает и через секунду появляется. Одна оболочка на секцию закрывает
+  // это по построению: слот карты существует с первого кадра секции, прогрет
+  // кэш или нет. Города карта берёт из shell (пины и кадр — сразу), редактор
+  // ждёт content.
+  const loading = !draft;
+  const nodes = draft ? draft.nodes : shellNodes;
 
-  const ordered = sortVisits(draft.nodes);
+  const ordered = sortVisits(nodes);
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
-  const cityCount = uniqueCityCount(draft.nodes);
-  const dateRange = formatTripRange(draft.nodes, '-');
+  const cityCount = uniqueCityCount(nodes);
+  const dateRange = formatTripRange(nodes, '-');
   const endDate = seq[seq.length - 1]?.end_date;
   // Trip length via the ONE shared helper (tripDuration().days = nights+1 =
   // calendar days), the same source the trip header / Overview / public trip use.
   // Was an inline nights count rendered with the day-word — off by one from them.
-  const tripDays = tripDuration(null, draft.nodes).days;
+  const tripDays = tripDuration(null, nodes).days;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
@@ -933,9 +955,10 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // Drill-версии: открыть ПОВЕРХ текущей панели (город → отель/бронь).
   const drillEvent = (kind, id) => pushPanel(eventDesc(kind, id));
   const drillBooking = (kind, node) => { if (isTmpId(node?.id)) return; pushPanel(bookingDesc(kind, node)); };
-  // Stay numbering (only nights-cities are numbered).
-  const stayNumById = {};
-  { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
+  // Номера городов — ОБЩЕЕ правило модели маршрута (`visitNumbers`), то же, что
+  // у пинов карты, шага 2 и ряда под лентой ИИ. Свой счётчик здесь был вторым
+  // выражением того же правила (TRIP-527).
+  const stayNumById = visitNumbers(ordered);
   // Live preview order, FLIP reorder, keyboard move, pointer-drag arm/move/end and
   // justDraggedRef are all provided by the shared useRouteDnD hook instantiated
   // above (destructured: displayNodes, draggingId, overGap, setRowRef, armDrag,
@@ -945,7 +968,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   const adjPairs = new Set();
   for (let k = 0; k < ordered.length - 1; k++) adjPairs.add(`${ordered[k].id}>${ordered[k + 1].id}`);
   const outOfPlanTransfers = liveTransfers.filter((tr) => !adjPairs.has(`${tr.from_city_visit_id}>${tr.to_city_visit_id}`));
-  const nodeName = (id) => draft.nodes.find((n) => n.id === id)?.city_name || '?';
+  const nodeName = (id) => nodes.find((n) => n.id === id)?.city_name || '?';
 
   // Left-column panel (in-place, replaces the old modals). null → city list.
   // Adding a city no longer opens a panel — it happens inline in the route list
@@ -1035,7 +1058,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // Map camera focus following the open panel: city/hotel/activity → that city;
   // transfer → both cities. Falsy → whole-route auto-fit stays in charge.
   const coordOf = (n) => (n && n.latitude != null && n.longitude != null ? [n.longitude, n.latitude] : null);
-  const byId = (id) => draft.nodes.find((n) => n.id === id);
+  const byId = (id) => nodes.find((n) => n.id === id);
   let mapFocus = null;
   if (leftPanel?.type === 'city') {
     const p = coordOf(byId(leftPanel.id)); if (p) mapFocus = [p];
@@ -1120,7 +1143,7 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   // с карты в список ничего не приходило.
   // Приоритет бейджа: наведение → зафиксированный клик по карте → открытая панель.
   const badgeId = hoveredNodeId || mapPickId || selectedNodeId;
-  const badgeNode = draft.nodes.find((n) => n.id === badgeId) || null;
+  const badgeNode = nodes.find((n) => n.id === badgeId) || null;
   // CTA показываем ТОЛЬКО когда бейдж — это зафиксированный на карте выбор (ещё не
   // открытый). Наведение на другой город уводит бейдж на него → CTA гаснет; на сам
   // выбранный — badgeId === mapPickId, CTA держится (без мигания при ховере пина).
@@ -1176,7 +1199,17 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
   //
   // Теперь: карта во всю свободную площадь, редактор — плавающий виджет слева со
   // сворачиванием, на телефоне тот же виджет уезжает в шит с тремя детентами.
-  const routeHead = (
+  // Скелетон панели — ТОЛЬКО панели: оболочка и карта выше живые. Ритм рядов
+  // собран общими утилитами, а не `.te-table`/`.te-seamwrap` (приватное
+  // устройство редактора, от правок которого скелетон уже сиротел однажды);
+  // коробку тела даёт та же `.te-panefade`, что и у рабочей панели, поэтому
+  // отступы кадра загрузки совпадают с рабочими.
+  const routeHead = loading ? (
+    <div className="col col--g2">
+      <Skeleton w={160} h={26} r={6} />
+      <Skeleton w={210} h={12} r={5} />
+    </div>
+  ) : (
     <PageHead
       /* Воздух снизу даёт слот шапки шелла — модификатор снимает собственный
          отступ примитива, иначе они складываются. */
@@ -1198,7 +1231,22 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
 
   // Тело виджета: список маршрута ЛИБО панель, подменяющая его («добавить
   // город»). Ключ на обёртке перезапускает анимацию появления при смене.
-  const routeBody = (
+  const routeBody = loading ? (
+    <div className="te-panefade">
+      <div className="col col--g3">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} radius="md" className="row row--g6">
+            <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+            <div className="grow col col--g2">
+              <Skeleton w="50%" h={14} r={5} />
+              <Skeleton w="30%" h={11} r={5} />
+            </div>
+            <Skeleton w={90} h={30} r={'var(--r-pill)'} />
+          </Card>
+        ))}
+      </div>
+    </div>
+  ) : (
     <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1}
       onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade">
       {(!isSheet && !useDrawer && leftPanelEl) || (
@@ -1314,116 +1362,107 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
     </div>
   );
 
+  // ── Поверхность карты — в оболочку (TripShell, TRIP-520) ───────────────────
+  // Раскладку «карта во всю площадь + виджет над ней» держит `MapShell`, но
+  // рисует его ОБОЛОЧКА трипа, а не эта секция: шелл и карта живут дольше секции
+  // и переживают переход из визарда создания. Секция публикует конфиг шелла и
+  // пропы общего `MapView`, а содержимое виджета рендерит в его слоты.
+  // Встроенный режим (ящик календаря) поверхности не объявляет.
+  useShellSurface(
+    embedded ? null : {
+      panelLabel: t('trip.sidebar_route'),
+      collapsed, onCollapsedChange: setCollapsed,
+      /* Виджет редактора — это МАРШРУТ, и подсказка обязана называть его, а не
+         «панель»: общий текст примитива на трёх разных экранах означал бы три
+         разных предмета под одним именем. */
+      collapseLabel: t('tse.route_hide'), expandLabel: t('tse.route_show'),
+      detent, onDetentChange: setDetent,
+      /* Камере — ЛОГИЧЕСКИЙ факт открытости (сразу), а не присутствие рендера:
+         слой живёт лишние ~240 мс на анимации ухода, и отступ бы менялся с этой
+         задержкой, обрывая летящий focus (см. MapShell `overlayActive`). */
+      overlayActive: useDrawer,
+    },
+    {
+      // Пока shell не приехал, маршрут НЕИЗВЕСТЕН (`null`), а не пуст: пустой
+      // ставил бы стартовый глобус, чтобы через секунду улететь к маршруту.
+      visits: shell ? nodes : null, transfers: mapTransfers, showStartEnd: true,
+      mapControls: EDIT_MAP_CONTROLS, initialProjection: 'globe',
+      /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
+         «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
+      cooperativeGestures: false,
+      focus: mapFocus,
+      /* Двухшаговый клик (как в планировщике): маркер ФИКСИРУЕТ город
+         (бейдж + CTA), а зум/панель — уже по CTA (см. cityBadge.onAction).
+         Повторный клик по тому же снимает выбор. */
+      onCityClick: (pts) => { const v = cityUnderPin(pts); if (v) setMapPickId((cur) => (cur === v.id ? null : v.id)); },
+      /* Клик по ПУСТОЙ карте снимает выбор на карте и открытую панель — как
+         в планировщике. Пины гасят свой клик сами. В hotel-pick не трогаем:
+         там картой владеет оверлей отелей (его бейджи всплывают до 'click'). */
+      onMapClick: () => { if (isHotelPick) return; setMapPickId(null); if (leftPanel) { closeAll(); syncAfterPanel(); } },
+      selectedVisitId: mapPickId || selectedNodeId,
+      hoveredVisitId: hoveredNodeId,
+      cityBadge,
+      onCityHover: (pts) => setHoveredNodeId(pts ? cityUnderPin(pts)?.id ?? null : null),
+      selectedLegKey,
+      hideRoute: isHotelPick,
+      hotelPins,
+      selectedHotelId: staySelectedId,
+      hoveredHotelId: stayHoveredId,
+      onHotelClick: (id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); },
+      onHotelHover: setStayHoveredId,
+      colorScheme: isDarkTheme ? 'DARK' : 'LIGHT',
+    },
+  );
+
   // Встроенный режим: рендерим ТОЛЬКО панель (город/бронь/переезд) как есть — её
   // `.lp` заполняет ящик хоста (EventDrawerHost), который сам даёт хром, фокус и
   // Esc. Без карты и рельса маршрута; вся машинерия панели — та же.
   if (embedded) return leftPanelEl || null;
 
   return (
-    <MapShell
-      map={(view) => (
-            <MapView view={view} visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls={['projection', 'theme', 'se']} initialProjection="globe"
-              /* Карта — основная поверхность экрана, а не картинка в тексте: гейта
-                 «двумя пальцами» тут быть не должно (как в планировщике и линзе). */
-              cooperativeGestures={false}
-              focus={mapFocus}
-              /* Двухшаговый клик (как в планировщике): маркер ФИКСИРУЕТ город
-                 (бейдж + CTA), а зум/панель — уже по CTA (см. cityBadge.onAction).
-                 Повторный клик по тому же снимает выбор. */
-              onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) setMapPickId((cur) => (cur === v.id ? null : v.id)); }}
-              /* Клик по ПУСТОЙ карте снимает выбор на карте и открытую панель — как
-                 в планировщике. Пины гасят свой клик сами. В hotel-pick не трогаем:
-                 там картой владеет оверлей отелей (его бейджи всплывают до 'click'). */
-              onMapClick={() => { if (isHotelPick) return; setMapPickId(null); if (leftPanel) { closeAll(); syncAfterPanel(); } }}
-              selectedVisitId={mapPickId || selectedNodeId}
-              hoveredVisitId={hoveredNodeId}
-              cityBadge={cityBadge}
-              onCityHover={(pts) => setHoveredNodeId(pts ? ((pts || []).find((x) => !isAnchor(x)) || pts[0])?.id ?? null : null)}
-              selectedLegKey={selectedLegKey}
-              hideRoute={isHotelPick}
-              hotelPins={hotelPins}
-              selectedHotelId={staySelectedId}
-              hoveredHotelId={stayHoveredId}
-              onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
-              onHotelHover={setStayHoveredId}
-              colorScheme={isDarkTheme ? 'DARK' : 'LIGHT'} />
-      )}
-      panelHeader={routeHead}
-      panel={routeBody}
-      panelLabel={t('trip.sidebar_route')}
-      collapsed={collapsed}
-      onCollapsedChange={setCollapsed}
-      /* Виджет редактора — это МАРШРУТ, и подсказка обязана называть его, а не
-         «панель»: общий текст примитива на трёх разных экранах означал бы три
-         разных предмета под одним именем. */
-      collapseLabel={t('tse.route_hide')}
-      expandLabel={t('tse.route_show')}
-      detent={detent}
-      onDetentChange={setDetent}
-      /* Камере — ЛОГИЧЕСКИЙ факт открытости (сразу), а не присутствие рендера:
-         `panelOverlay` живёт лишние ~240 мс на анимации ухода, и отступ бы менялся
-         с этой задержкой, обрывая летящий focus (см. MapShell `overlayActive`). */
-      overlayActive={useDrawer}
-      panelOverlay={(useDrawer || closingLayers.length) ? (
-        /* Стопка панелей. Уходящие слои (`closingLayers`) рендерятся под СВОИМИ
-           ключами — теми же, что были у верхней панели, — поэтому React СОХРАНЯЕТ
-           их DOM-узлы (не ремонтит) и уход играет на уже смонтированном узле:
-           плавно, без пересборки тяжёлой панели. Текущая вершина — последней в
-           массиве (в DOM ниже) → лежит ПОВЕРХ уходящих: новая наезжает, старая
-           уезжает под ней. Все слои абсолютом заполняют коробку
-           (`.mapshell__overlay > .ts-pdrawer`). Ключ уходящего = ключ текущей
-           исключаются друг из друга (фильтр), чтобы не столкнуться при
-           переоткрытии панели во время её ухода. */
-        [
-          ...closingLayers.filter((l) => l.key !== overlayKey).map((l) => ({ k: l.key, el: l.el, closing: true, top: false })),
-          useDrawer && { k: panelKey, el: leftPanelEl, closing: false, top: true },
-        ].filter(Boolean).map((L) => (
-          <div
-            key={L.k}
-            ref={L.top ? leftPaneRef : undefined}
-            tabIndex={L.top ? -1 : undefined}
-            onKeyDown={L.top ? onPanelEsc : undefined}
-            className="ts-pdrawer"
-            data-closing={L.closing || undefined}
-            aria-hidden={L.closing || undefined}
-          >
-            {/* У уходящего слоя гасим побочный эффект, дотягивающийся до карты:
-                превью-нога переезда мигнула бы на время ухода. */}
-            {L.closing ? React.cloneElement(L.el, { onPreviewTransfer: NOOP }) : L.el}
-          </div>
-        ))
-      ) : null}
-    >
+    <>
+      <ShellSlot name="panelHead">{routeHead}</ShellSlot>
+      <ShellSlot name="panelBody">{routeBody}</ShellSlot>
+      <ShellSlot name="panelOverlay">
+        {(useDrawer || closingLayers.length) ? (
+          /* Стопка панелей. Уходящие слои (`closingLayers`) рендерятся под СВОИМИ
+             ключами — теми же, что были у верхней панели, — поэтому React СОХРАНЯЕТ
+             их DOM-узлы (не ремонтит) и уход играет на уже смонтированном узле:
+             плавно, без пересборки тяжёлой панели. Текущая вершина — последней в
+             массиве (в DOM ниже) → лежит ПОВЕРХ уходящих: новая наезжает, старая
+             уезжает под ней. Все слои абсолютом заполняют коробку
+             (`.mapshell__overlay > .ts-pdrawer`). Ключ уходящего = ключ текущей
+             исключаются друг из друга (фильтр), чтобы не столкнуться при
+             переоткрытии панели во время её ухода. */
+          [
+            ...closingLayers.filter((l) => l.key !== overlayKey).map((l) => ({ k: l.key, el: l.el, closing: true, top: false })),
+            useDrawer && { k: panelKey, el: leftPanelEl, closing: false, top: true },
+          ].filter(Boolean).map((L) => (
+            <div
+              key={L.k}
+              ref={L.top ? leftPaneRef : undefined}
+              tabIndex={L.top ? -1 : undefined}
+              onKeyDown={L.top ? onPanelEsc : undefined}
+              className="ts-pdrawer"
+              data-closing={L.closing || undefined}
+              aria-hidden={L.closing || undefined}
+            >
+              {/* У уходящего слоя гасим побочный эффект, дотягивающийся до карты:
+                  превью-нога переезда мигнула бы на время ухода. */}
+              {L.closing ? React.cloneElement(L.el, { onPreviewTransfer: NOOP }) : L.el}
+            </div>
+          ))
+        ) : null}
+      </ShellSlot>
       {/* ★ ВИДЖЕТА ПРОБЛЕМ ЗДЕСЬ БОЛЬШЕ НЕТ (решение Pavel). Круглый FAB со
           счётчиком и выпадающий `<ConflictsPanel>` сняты целиком — визуал
           проблем на этом экране рисуется заново отдельной задачей.
           ДВИЖОК ОСТАЛСЯ НА МЕСТЕ И ЖИВОЙ: `issues` считается как считался и
           продолжает кормить метки в рядах (`cityConflicts`, `hotelWarnId`,
           `actWarnId`, `transferMismatch`) и текст проблемы, который приезжает в
-          открытую панель объекта (`openEvent`). Снят ровно один
-          потребитель — этот. Сам `ConflictsPanel` в `ValidationUI` НЕ удалён:
-          он и есть то, что новый визуал будет переиспользовать.
-          ★ Виджет был СОБРАН ИЗ ДС (Card + IconBtn + Badge + ConflictsPanel), и
-          его снятие роняет долю ДС — метрику, которая ходит только вверх. Это не
-          деградация языка, а удаление узла целиком: с ним ушли и его сырые
-          обёртки. Апрув Pavel — постановка «убрать виджет проблем, визуал новый
-          будет позже».
-          floor-exempt: dsshare +4 — снят виджет проблем целиком (узлов ДС стало меньше вместе с самим узлом), апрув Pavel
-
-          Вместе с виджетом ушёл и его класс `.ts-warnfab` со всеми правилами —
-          осиротевшее правило удалять обязательно (гард 2n). Объявляю каждое
-          снятое объявление: у 2p ключ = единица + свойство, а не «файл», поэтому
-          маркеры и живут рядом с ПРИЧИНОЙ, а не в CSS, где их предмета больше нет.
-          visual-diff-exempt: .ts-warnfab position — класс снят вместе с виджетом проблем
-          visual-diff-exempt: .ts-warnfab right — то же
-          visual-diff-exempt: .ts-warnfab bottom — то же
-          visual-diff-exempt: .ts-warnfab z-index — то же
-          visual-diff-exempt: .ts-warnfab display — то же
-          visual-diff-exempt: .ts-warnfab flex-direction — то же
-          visual-diff-exempt: .ts-warnfab align-items — то же
-          visual-diff-exempt: .ts-warnfab gap — то же
-          visual-diff-exempt: .ts-warnfab max-width — то же
-          visual-diff-exempt: .ts-warnfab transition — то же */}
+          открытую панель объекта (`openEvent`). Сам `ConflictsPanel` в
+          `ValidationUI` НЕ удалён: он и есть то, что новый визуал будет
+          переиспользовать. */}
       {/* ★★ ПАНЕЛЬ В ШТОРКЕ — ЧЕРЕЗ ОБЩИЙ ХОСТ, И ЭТО ПОЧИН ЗАЛИПАНИЯ (TRIP-496).
           Здесь стоял свой `<LpSheet open …>` с открытостью, заданной ЛИТЕРАЛОМ:
           «шторка открыта» выражалось тем, что элемент вообще отрисован. Пока слой
@@ -1451,9 +1490,8 @@ export default function EditLens({ tripId, shell, content, openCityId, onCityOpe
           {leftPanelEl}
         </EventDrawerHost>
       )}
-    </MapShell>
+    </>
   );
-
 }
 
 
@@ -1550,7 +1588,7 @@ function GridNode({ showCols = true, readOnly = false, seg, stayNum, cityConf, h
     return (
       <CityRow variant="editor" dragging={rowDrag?.dragging} pressing={rowDrag?.pressing} onArm={rowDrag?.onArm} onClick={onOpenCity}
         grip={gripEl}
-        lead={<Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>}
+        lead={<Tile as="span" tone="transfer" className="te-row__node"><Icon name="arrowSwap" size={11} /></Tile>}
         name={seg.city_name}
         conf={<Conf n={cityConf} />}
         dates={<><Badge size="tiny">{t('tse.layover')}</Badge>{fmtD(seg.start_date, lang)}</>}>
@@ -1588,8 +1626,9 @@ function GridNode({ showCols = true, readOnly = false, seg, stayNum, cityConf, h
 function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   const tx = useT();
   const { lang } = useI18n();
-  const sameCity = (a.external_city_id && b.external_city_id && a.external_city_id === b.external_city_id) || (a.city_name && a.city_name === b.city_name);
-  if (sameCity && !t) return null;
+  // «Тот же город» — общий предикат (`lib/validation.sameCity`): им же лента
+  // решает, нужен ли переезд, и «Подготовка» считает стыки.
+  if (sameCity(a, b) && !t) return null;
   const click = disabled ? undefined : onOpen; // a seam next to a pending city is inert
   if (!t) {
     return (

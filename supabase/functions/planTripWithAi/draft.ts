@@ -1,0 +1,99 @@
+/**
+ * Форма драфта на границе доверия (TRIP-527).
+ *
+ * Фронт шлёт текущий черновик маршрута каждой репликой, edge пробрасывает его в
+ * n8n, где он ложится в промпт модели. Содержимое здесь не интерпретируется —
+ * словарь узлов и операций живёт на фронте (`src/pages/create/aiOps.js`), — но
+ * форма и размер проверяются: это пользовательский ввод, который уходит в
+ * платный LLM-вызов, и без потолка один запрос может унести с собой мегабайт.
+ *
+ * ★ ВАЛИДАТОР — ОБЩИЙ ШОВ, НЕ СВОЙ. Спек полей — тот же `FieldSpec`, что у
+ * ресурсов записи (`_shared/mutateRules.ts`): движок `validateFields` держит
+ * тип/кэп/enum/nullable, массив узлов гоняет `validateEach` — тем же правилом,
+ * что `cities` при создании трипа. Отказ — тот же `Refusal` (`INVALID_INPUT`),
+ * что у шва записи, и уходит клиенту через `refusalResponse`. Своего regex
+ * даты, своих `str()`/`num()` и своего словаря типов здесь нет.
+ *
+ * Кэп строки = домен `short_text` в БД (300): у драфта своего хранилища нет, но
+ * второе число для «короткой строки» в проекте не заводится — оно живёт в шве
+ * (`SHORT_TEXT`), как и спека тройки «город словами» (`CITY_NAME_FIELDS`).
+ */
+
+import {
+  CITY_NAME_FIELDS,
+  type FieldSpec,
+  type Refusal,
+  SHORT_TEXT,
+  bad,
+  validateEach,
+  validateFields,
+} from '../_shared/mutateRules.ts';
+
+export const MAX_NODES = 60;
+/** Кэп строки узла — общий `SHORT_TEXT` шва (= домен `public.short_text`). */
+export const MAX_STR = SHORT_TEXT;
+
+const NODE_FIELDS: Record<string, FieldSpec> = {
+  // Пустой `ref` — не ссылка: модели не на что ссылаться, а применятор ищет узел
+  // по строке. Форма (`string`, кэп) — движком, непустота — хуком домена.
+  ref: { type: 'string', required: true, max: MAX_STR, validate: (v) => (String(v).trim() ? null : bad('Field "draft.nodes[].ref" must not be empty')) },
+  kind: { type: 'string', required: true, enum: ['start', 'transit', 'waypoint', 'end'] },
+  // Тройка «город словами» — ОБЩАЯ спека шва (та же, что у инструмента
+  // справочника): кэпы и форма кода страны объявлены один раз.
+  ...CITY_NAME_FIELDS,
+  nights: { type: 'number', min: 0, nullable: true },
+  geonameid: { type: 'number', nullable: true },
+};
+
+const eachNode = validateEach(NODE_FIELDS, 'draft.nodes');
+const DRAFT_FIELDS: Record<string, FieldSpec> = {
+  startDate: { type: 'date', nullable: true },
+  title: { type: 'string', max: MAX_STR },
+  nodes: {
+    type: 'array',
+    required: true,
+    // Потолок числа узлов — доменное правило поверх формы элементов.
+    validate: (v) => (Array.isArray(v) && v.length > MAX_NODES
+      ? bad(`Field "draft.nodes" must have at most ${MAX_NODES} entries`)
+      : eachNode(v)),
+  },
+};
+
+export type DraftNode = {
+  ref: string;
+  kind: string;
+  city_name?: string;
+  city_name_en?: string;
+  country_code?: string;
+  nights?: number | null;
+  geonameid?: number | null;
+};
+export type Draft = { startDate: string | null; title: string; nodes: DraftNode[] };
+
+/** Только объявленные поля узла едут дальше — в промпт не уходит ничего лишнего. */
+const pickNode = (n: Record<string, unknown>): DraftNode => {
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(NODE_FIELDS)) if (k in n) out[k] = n[k];
+  return out as DraftNode;
+};
+
+/**
+ * Приводит тело `draft` к известной форме. `undefined`/`null` — законно (первая
+ * реплика без черновика) → `{ draft: null }`. Нарушение формы → `Refusal` (400,
+ * `INVALID_INPUT`), как у любого шва записи; вызыватель различает исходы той же
+ * проверкой `'status' in r`, что и `mutate.ts`, — своего предиката у шва нет.
+ */
+export function normalizeDraft(input: unknown): Refusal | { draft: Draft | null } {
+  if (input == null) return { draft: null };
+  if (typeof input !== 'object' || Array.isArray(input)) return bad('Field "draft" must be an object');
+  const r = validateFields(DRAFT_FIELDS, input as Record<string, unknown>, { insert: true });
+  if ('status' in r) return r;
+  const v = r.values;
+  return {
+    draft: {
+      startDate: (v.startDate as string | null | undefined) ?? null,
+      title: (v.title as string | undefined) ?? '',
+      nodes: (v.nodes as Record<string, unknown>[]).map(pickNode),
+    },
+  };
+}

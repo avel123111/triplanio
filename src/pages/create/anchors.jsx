@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '../../design/icons';
-import { Card, Tile } from '../../design/index';
+import { Card, Country, Tile } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 
 // ─── CityAnchorRow ────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ export function CityAnchorRow({ label, city, editable = false, addLabel, meta, o
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
         <div className="row row--g3 te-cityline">
           <span className="trunc te-cityname">{city?.city_name || <span className="muted">{t('planner.not_set')}</span>}</span>
-          {city?.country && <span className="muted t-meta">{city.country}</span>}
+          <Country code={city?.country_code} name={city?.country} />
         </div>
         {meta ? <div className="row row--g3 te-dts">{meta}</div> : null}
       </div>

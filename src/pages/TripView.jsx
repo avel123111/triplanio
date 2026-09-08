@@ -18,12 +18,11 @@ import { proRole } from '@/lib/proUpsell';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { getAddons, isAddonEnabled, normalizeAddons } from '@/lib/tripAddons';
 import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from '@/lib/tripMenu';
-import TripShell from '@/components/trips/TripShell';
+import { ShellSlot, useShellFacts, useShellHost } from '@/components/trips/TripShellContext';
 import TripShareFlow from '@/components/trips/TripShareFlow';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, MapShell, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, BookingWarning, TimelineEmptyDay, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
-import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, sameCity } from '@/lib/validation';
 import { loadDismissed, serializeDismissed, storageKey as dismissedStorageKey, transferWarnKey, hotelWarnKey } from '@/lib/warningDismissals';
 import { cityNeedsHotel, cityNights, hotelCoversCity } from '@/lib/trip-preparation';
@@ -307,81 +306,6 @@ function RightRailSkeleton() {
 // осиротевшими (их бы потребовал снести гард 2n).
 // visual-diff-exempt: .ts-grid {@media (max-width: 640px)} grid-template-columns — правило снесённой раскладки редактора, разметки под него не осталось
 // visual-diff-exempt: .ts-col-right {@media (max-width: 640px)} display — то же, вторая половина того же мёртвого правила
-//
-// Скелетон структурного редактора — ОДИН на обе фазы загрузки (shell и content).
-//
-// ★ РИСУЕТ ТУ ЖЕ РАСКЛАДКУ, ЧТО И САМ РЕДАКТОР, — ОБЩИЙ <MapShell>. До этого он
-// был СИРОТОЙ: размечен под `.ts-grid` / `.ts-leftscroll`, то есть под две
-// колонки, снесённые в TRIP-422 вместе со второй рукописной копией раскладки.
-// Правил у этих имён не осталось (`.ts-grid` вычислялся `display: block`), и
-// кадр загрузки выходил не «редактор без данных», а другой экран: ряды во всю
-// ширину и карты нет вовсе. Ни один гард этого не видел — 2n ловит осиротевшее
-// ПРАВИЛО, а тут осиротела РАЗМЕТКА, обратное направление.
-//
-// Карту тут отдаём ПУСТЫМ слотом, а не живой поверхностью: инстанс mapbox один
-// на всё приложение (MapProvider), и двух живых поверхностей одновременно быть
-// не может. Слот и без канваса красит подложку (`--map-backdrop`) — ровно то,
-// что видно, пока не пришли тайлы.
-//
-// ★ ДЕТЕНТ И СВОРАЧИВАНИЕ ОБЪЯВЛЕНЫ ЯВНО, И ЭТО НЕ УКРАШЕНИЕ. Оба состояния
-// принадлежат ВИДЖЕТУ, а не данным в нём, поэтому кадр загрузки обязан открыть
-// его там же, где откроет редактор. Промолчав, скелетон брал дефолт примитива
-// (детент 0 = 15%) и на телефоне показывал шит полоской, которая прыгала на 68%
-// в момент приезда content'а, — то есть ровно тот шов, который эта задача
-// убирает на десктопе. Кнопка сворачивания на шве по той же причине: без
-// `onCollapsedChange` шелл её не рисует вовсе, и она «выщёлкивалась» бы при
-// смене скелетона на редактор.
-function EditSkeleton() {
-  const { t } = useI18n();
-  const [detent, setDetent] = useState(1);
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <MapShell
-      /* Тот же ключ, что у готовой секции (`trip.sidebar_route`): скелетон и
-         экран обязаны называться одинаково, иначе подпись меняется на глазах
-         в момент загрузки. */
-      panelLabel={t('trip.sidebar_route')}
-      map={null}
-      detent={detent}
-      onDetentChange={setDetent}
-      collapsed={collapsed}
-      onCollapsedChange={setCollapsed}
-      collapseLabel={t('tse.route_hide')}
-      expandLabel={t('tse.route_show')}
-      panelHeader={(
-        <div className="col col--g2">
-          <Skeleton w={160} h={26} r={6} />
-          <Skeleton w={210} h={12} r={5} />
-        </div>
-      )}
-      panel={(
-        <div className="te-panefade">
-          {/* Граница реюза проведена по КОРОБКЕ и РИТМУ, и она намеренная.
-              `.te-panefade` (обёртка выше) берём ОСОЗНАННО: это коробка тела
-              виджета — отступы, скролл и появление, — и именно от неё отступы
-              кадра загрузки совпадают с рабочими. А вот РИТМ РЯДОВ собран общими
-              утилитами, а не `.te-table` / `.te-seamwrap`: те держат сетку колонок
-              редактора и зазоры его списка, то есть приватное устройство того,
-              чего в скелетоне нет. Дотянувшись туда, он ломался бы от каждой
-              правки редактора — ровно так он и осиротел в прошлый раз. */}
-          <div className="col col--g3">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} radius="md" className="row row--g6">
-                <Skeleton w={36} h={36} r={'var(--r-sm)'} />
-                <div className="grow col col--g2">
-                  <Skeleton w="50%" h={14} r={5} />
-                  <Skeleton w="30%" h={11} r={5} />
-                </div>
-                <Skeleton w={90} h={30} r={'var(--r-pill)'} />
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-    />
-  );
-}
-
 // Build a sorted array of all days between start and end (inclusive), 'yyyy-MM-dd'
 function buildDayList(startIso, endIso) {
   const days = [];
@@ -552,7 +476,7 @@ function TimelineLens({ stream, visits, transfers, hotels, trip, isLoading, onAd
   const cityMissesHotel = (c) =>
     cityNeedsHotel(c) && !(hotels || []).some(h => hotelCoversCity(h, c));
   // Через `plural()`: ручной тернарник `n < 5` давал «21 ночей». Тот же тернарник
-  // ещё в FlowMap, ManualPlanner ×3, EventViewBody — отдельный PR.
+  // ещё в ManualPlanner ×3, EventViewBody — отдельный PR.
   const nightsWord = (n) => pluralize(t, n, 'view.nights', lang);
 
   // Renders one city's arrival block: the missing-transfer warning, then the
@@ -1169,10 +1093,6 @@ export default function TripView() {
     if (sectionEvent) track(sectionEvent, { trip_id: tripId });
   }, [sectionKnown, shownLens, tripId]);
 
-  // Тело — постоянный скролл-контейнер; сброс наверх при смене секции держит
-  // TripShell (ref прокидываем, он же нужен рейлу городов в ленте).
-  const screenBodyRef = useRef(null);
-
   // TRIP-56: map the shell-load state to the right screen instead of one
   // catch-all "no access". useQueryGate reads isPending + fetchStatus + error
   // together (shared with the editor + auto /login redirect), so OFFLINE — where
@@ -1193,7 +1113,9 @@ export default function TripView() {
   // than render an empty editor»). emptyIsOk:false по той же причине, что и у
   // shell: осевший пустым content для редактора неотличим от несостоявшегося.
   const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!contentData, false);
-  const editGate = contentGate === 'ok' ? 'ok' : (contentGate === 'loading' || contentGate === 'auth') ? 'loading' : 'error';
+  // Единственный читатель — гейт секции «Маршрут»: отказ content (не загрузка и
+  // не уход по auth) разворачивает её в retry.
+  const contentFailed = contentGate !== 'ok' && contentGate !== 'loading' && contentGate !== 'auth';
 
   // 'auth' shows the same loading placeholder while useQueryGate's effect redirects to /login.
   // Секция берётся СЫРОЙ из адреса, а не через resolveSection: аддоны приезжают
@@ -1204,41 +1126,52 @@ export default function TripView() {
   // покажет скелетон меню, а секция — свой скелетон, ВСЁ в том же дереве, что и
   // после загрузки, поэтому ничего не размонтируется и не прыгает (TRIP-337).
   const shellLoading = shellGate === 'loading' || shellGate === 'auth';
+
+  // ── Global trip header: subtitle (dates · days · cities) ──
+  // Trip length — ONE source for every surface: tripDuration().days (= nights+1,
+  // calendar days inclusive), the same helper the Overview stat row and the
+  // public trip use. Previously this header computed nights inline and rendered
+  // them with the day-word ("12 days" for a 12-night trip), so it disagreed with
+  // Overview/public ("13 days") for the identical trip.
+  // Мемо, а не литерал: узел уходит фактом в оболочку, и новый на каждый рендер
+  // публиковался бы каждый раз.
+  const heroSub = useMemo(() => {
+    const dateRange = formatTripRange(visits, '-');
+    const cityCount = uniqueCityCount(visits);
+    const tripDays = tripDuration(trip, visits).days;
+    const dayWord = (n) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
+    return (
+      <>
+        {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
+        {tripDays > 0 && (
+          <><span>·</span><span>{tripDays} {dayWord(tripDays)}</span></>
+        )}
+        {cityCount > 0 && (
+          <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>
+        )}
+      </>
+    );
+  }, [trip, visits, t]);
+
+  // ── Оболочка (TripShell — элемент раскладки роутера, TRIP-520) ─────────────
+  // Шапку, рейл, шит меню и док рисует оболочка из ФАКТОВ; здесь они публикуются.
+  // Ступень уходит туда же — оболочка ставит `TripAccessProvider` над секциями,
+  // единственный канал права в поддереве (TRIP-274 Ф2.2). Действия трипа
+  // (Поделиться / Настройки / Участники) живут в меню оболочки, в шапке дублей нет.
+  useShellFacts(
+    { mode: 'trip', tripId, addons: menuAddons, section: shownLens, step: myStep, isPro: tripIsPro, proResolved: tripProResolved, title: trip?.title, meta: heroSub, loading: shellLoading },
+    { onNavigate: setLens, onShare: () => setShareOpen(true), onProUpsell: openProInfo },
+  );
+  // Скроллер тела — у оболочки (реф хоста): рейл городов ленты следит за ним.
+  const screenBodyRef = useShellHost()?.mainRef ?? null;
+
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
   // exist" page, NOT the accusatory "no access". Split from 'access' in TRIP-208.
   if (shellGate === 'not_found') return <PageNotFound />;
   if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
 
-  // ── Global trip header: cover, subtitle and the right-hand hero actions ──
-  // (Share / Edit / "…"). Cover priority mirrors the old cover strip: uploaded
-  // photo → preset gradient → default waves. All dialogs open via the global
-  // modal mount, so they work from any lens.
-  const dateRange = formatTripRange(visits, '-');
-  const cityCount = uniqueCityCount(visits);
-  // Trip length — ONE source for every surface: tripDuration().days (= nights+1,
-  // calendar days inclusive), the same helper the Overview stat row and the
-  // public trip use. Previously this header computed nights inline and rendered
-  // them with the day-word ("12 days" for a 12-night trip), so it disagreed with
-  // Overview/public ("13 days") for the identical trip.
-  const tripDays = tripDuration(trip, visits).days;
-  const dayWord = (n) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
-  const heroSub = (
-    <>
-      {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
-      {tripDays > 0 && (
-        <><span>·</span><span>{tripDays} {dayWord(tripDays)}</span></>
-      )}
-      {cityCount > 0 && (
-        <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>
-      )}
-    </>
-  );
-  // Действия трипа (Поделиться / Редактор / Настройки / Участники) живут в левом
-  // меню, копия трипа — в настройках; в шапке дублей нет. Раскладку тела
-  // (обычное / в край) и «назад» держит TripShell по реестру секций.
-
-  // Слот `drawer` оболочки: глобальный ящик брони/события. Позиция в DOM тут
+  // Слот `content` оболочки: глобальный ящик брони/события. Позиция в DOM тут
   // несущая — он позиционируется абсолютом относительно `.trip-content` (уже
   // ниже шапки и правее меню) и НЕ должен скроллиться вместе с содержимым,
   // поэтому он сосед <main>, а не его потомок.
@@ -1295,7 +1228,7 @@ export default function TripView() {
     </EventDrawerHost>
   );
 
-  // Слот `overlays`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне
+  // Слот `shell`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне
   // колонок, ровно как было.
   const overlays = (
     <>
@@ -1373,26 +1306,11 @@ export default function TripView() {
   );
 
   return (
-    // Единый доступ к праву для всего поддерева трипа: линзы, шит, диалоги
-    // читают `useTripAccess()` вместо пропов права (TRIP-274 Ф2.2). Ступень
-    // считается один раз в самом провайдере.
-    <TripAccessProvider step={myStep}>
-    <TripShell
-      tripId={tripId}
-      addons={menuAddons}
-      section={shownLens}
-      isPro={tripIsPro}
-      proResolved={tripProResolved}
-      title={trip?.title}
-      meta={heroSub}
-      onNavigate={setLens}
-      onShare={() => setShareOpen(true)}
-      onProUpsell={openProInfo}
-      bodyRef={screenBodyRef}
-      drawer={eventDrawer}
-      overlays={overlays}
-      loading={shellLoading}
-    >
+    <>
+    {/* Ящик — соседом <main> в `.trip-content`, оверлеи — в `.trip-shell` после
+        тела: позиции в DOM несущие (см. TripShell), поэтому — слотами оболочки. */}
+    <ShellSlot name="content">{eventDrawer}</ShellSlot>
+    <ShellSlot name="shell">{overlays}</ShellSlot>
           {/* TRIP-195: hotel / activity / transfer create moved to the global
               add-booking DRAWER (see EventDrawerHost below). Only services keep
               the ForkPartnerModal. */}
@@ -1581,14 +1499,15 @@ export default function TripView() {
               ★ Гейт стал строже по ОХВАТУ, а не по правилу: с TRIP-459 маршрут
               смотрят все, поэтому падение content'а теперь разворачивает в
               retry и наблюдателя — у него это единственный экран с картой. */}
+          {/* Загрузку секция держит САМА: `EditLens` монтируется сразу и рисует
+              свою оболочку с живой картой, а скелетон занимает только панель,
+              пока нет content. Отдельного скелетона со второй оболочкой здесь
+              больше нет — он парковал инстанс карты на время загрузки (разбор в
+              EditLens у `loading`). Гейт остаётся один: отказ content → retry. */}
           {shownLens === 'route' && (
-            (shellLoading || editGate === 'loading')
-              // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же в
-              // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
-              ? <EditSkeleton />
-              : editGate === 'ok'
-                ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
-                : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
+            (!shellLoading && contentFailed)
+              ? <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
+              : <EditLens tripId={tripId} shell={shellData} content={contentData} />
           )}
           {shownLens === 'settings' && (
             <SettingsLens
@@ -1612,7 +1531,6 @@ export default function TripView() {
             />
           )}
           </ErrorBoundary>
-    </TripShell>
-    </TripAccessProvider>
+    </>
   );
 }
