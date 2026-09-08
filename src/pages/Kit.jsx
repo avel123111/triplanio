@@ -154,11 +154,17 @@ const TX = {
   fsBack: 'Назад', fsCancel: 'Отмена', fsSave: 'Сохранить',
   fsPhaseHint: 'Вид точки', fsChange: 'Изменить', fsAdd: 'Добавить',
   // Подписи плиток — те же четыре вида точки, что у настоящего композера
-  // (`cities/CityAdder`): витрина показывает ОБЪЕКТ, а не случайный текст.
-  // Сами виды приезжают из `POINT_TYPES` (оттуда же картины), здесь только
-  // подписи — страница вне i18n, звать `t()` ей нечем; порядок обязан совпадать.
-  fsKinds: ['Посещение', 'Пересадка', 'Старт', 'Финиш'],
-  fsKindSubs: ['Остановка с ночёвками', 'На 1 день, без ночёвки', 'Начало поездки', 'Конец поездки'],
+  // (`cities/CityAdder`): витрина показывает ОБЪЕКТ, а не случайный текст. Сами
+  // виды (и картины) приезжают из `POINT_TYPES`, здесь только текст — страница
+  // вне i18n, звать `t()` ей нечем. Ключ — `id` вида, а не индекс: параллельный
+  // массив завёл бы инвариант «порядок совпадает», который нечем проверить, и
+  // перестановка видов в словаре молча переклеила бы подписи на витрине.
+  fsKinds: {
+    transit: { ttl: 'Посещение', sub: 'Остановка с ночёвками' },
+    waypoint: { ttl: 'Пересадка', sub: 'На 1 день, без ночёвки' },
+    start: { ttl: 'Старт', sub: 'Начало поездки' },
+    end: { ttl: 'Финиш', sub: 'Конец поездки' },
+  },
   fsDrill: 'Открыть переезд (слой поверх)', fsDrillTitle: 'Переезд',
   fsDrillBody: 'Второй слой ВНУТРИ той же шторки — как город → переезд в редакторе. Свайп вниз закрывает ПОВЕРХНОСТЬ, «Назад» снимает один слой.',
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
@@ -459,13 +465,13 @@ function FullSurfaceDemo() {
             </div>
             <span className="eyebrow">{TX.fsPhaseHint}</span>
             <div className="te-add-grid">
-              {POINT_TYPES.map((pt, i) => (
+              {POINT_TYPES.map((pt) => (
                 <button key={pt.id} type="button" className="te-add-type">
-                  <Tile size="2xl" tone="quiet"><Illustration name={pt.art} /></Tile>
-                  <div className="col col--g1">
-                    <span className="t-label">{TX.fsKinds[i]}</span>
-                    <span className="t-meta">{TX.fsKindSubs[i]}</span>
-                  </div>
+                  <Tile as="span" size="2xl" tone="quiet"><Illustration name={pt.art} /></Tile>
+                  <span className="col col--g1">
+                    <span className="t-subheading">{TX.fsKinds[pt.id].ttl}</span>
+                    <span className="t-meta muted">{TX.fsKinds[pt.id].sub}</span>
+                  </span>
                 </button>
               ))}
             </div>

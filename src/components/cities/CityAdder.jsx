@@ -52,9 +52,14 @@ export const POINT_TYPES = [
      одно понятие под двумя именами на соседних экранах. Ключ существующий, в
      Tolgee заводить нечего. `event.city` остался тем, чем и был: подписью ПОЛЯ
      города в окне события, а это другой смысл. */
-  { id: 'transit', labelKey: 'tse.node_visit', art: 'point-transit', subKey: 'tse.pt_transit_sub' },
-  { id: 'waypoint', labelKey: 'tse.pt_waypoint', art: 'point-waypoint', subKey: 'tse.pt_waypoint_sub' },
+  /* Порядок — ХОД ПОЕЗДКИ (старт · пересадка · посещение · финиш), решение
+     Pavel. Он читается слева направо и на телефоне ложится в 2×2 без разрыва
+     смысла. Порядком СПИСКА ничего, кроме отрисовки, не управляется: предвыбор
+     и запись ходят по `id` (`defaultKind`, `disabledFor`, `effKind`), поэтому
+     перестановка строк безопасна. */
   { id: 'start', labelKey: 'ai_plan.start', art: 'point-start', subKey: 'tse.pt_start_sub' },
+  { id: 'waypoint', labelKey: 'tse.pt_waypoint', art: 'point-waypoint', subKey: 'tse.pt_waypoint_sub' },
+  { id: 'transit', labelKey: 'tse.node_visit', art: 'point-transit', subKey: 'tse.pt_transit_sub' },
   { id: 'end', labelKey: 'ai_plan.end', art: 'point-end', subKey: 'tse.pt_end_sub' },
 ];
 
@@ -176,7 +181,18 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
           (`quiet`): правило «квадрат несёт оттенок значка» выведено для
           ОДНОЦВЕТНОГО значка, а у полноцветной сцены своего оттенка нет; brand-
           плашка вдобавок совпала бы байт-в-байт с грунтом ВЫБРАННОЙ плитки
-          (`--brand-soft`) и исчезла бы ровно на ней. */}
+          (`--brand-soft`) и исчезла бы ровно на ней.
+
+          Голоса у пары РАЗНЫЕ, и это решение Pavel: название — канон-
+          подзаголовок (`t-subheading`), субтитр — приглушённая мета
+          (`t-meta muted`). Плата за `muted` названа вслух: `.t-meta` цвета не
+          несёт и подпись подхватывала тон плитки (brand у выбранной, `--muted-2`
+          у погашенной), а `.muted` прибивает его намертво — от состояния плитки
+          теперь отвечают название, грунт и рамка, подпись в этом не участвует.
+
+          Носитель плашки и текстовой пары — `span`: содержимое кнопки это
+          phrasing content, и ось `as` у обоих примитивов заведена ровно под
+          этот случай. */}
       <Col gap="g2">
         <span className="eyebrow">{t('tse.pt_type_label')}</span>
         <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
@@ -187,10 +203,10 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
                 aria-pressed={effKind === pt.id} disabled={dis || undefined}
                 title={dis ? t('tse.already_set') : undefined}
                 onClick={() => setKind(pt.id)}>
-                <Tile size="2xl" tone="quiet"><Illustration name={pt.art} /></Tile>
-                <Col gap="g1">
-                  <span className="t-label">{t(pt.labelKey)}</span>
-                  <span className="t-meta">{t(pt.subKey)}</span>
+                <Tile as="span" size="2xl" tone="quiet"><Illustration name={pt.art} /></Tile>
+                <Col as="span" gap="g1">
+                  <span className="t-subheading">{t(pt.labelKey)}</span>
+                  <span className="t-meta muted">{t(pt.subKey)}</span>
                 </Col>
               </button>
             );
