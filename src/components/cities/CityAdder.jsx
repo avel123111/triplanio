@@ -1,7 +1,7 @@
 // @ts-check
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, IconBtn, Card } from '@/design/index';
+import { Btn, IconBtn, Card, Tile, Illustration } from '@/design/index';
 import { PickerSheet, usePickerFocus } from '@/components/ui/PickerSheet';
 import { Row, Col } from '@/design/Layout';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -40,16 +40,22 @@ import SelectedCity from '@/components/cities/SelectedCity';
  * человек волен выбрать другой вид. Занятые виды гасит `disabledFor`.
  */
 
+/* ★ ВИД ТОЧКИ ПОКАЗЫВАЕТ СЕБЯ КАРТИНОЙ, А НЕ ЗНАЧКОМ. Значков на четыре вида
+   хватало ровно на три: «Старт» и «Финиш» рисовались ОДНИМ `flag`, различал их
+   только текст — то есть картинка не несла различия вовсе. `art` называет запись
+   реестра иллюстраций (`design/illustrations.js`, TRIP-532) — той же формой, что
+   у карточки способа создания и пустого состояния: путь и размеры файла живут в
+   реестре, здесь только имя. */
 export const POINT_TYPES = [
   /* ⚠️ `tse.node_visit` («Посещение»), а НЕ `event.city` («Город»): панель узла
      (`CityPanel`) уже зовёт этот же узел посещением, и плитка звала его городом —
      одно понятие под двумя именами на соседних экранах. Ключ существующий, в
      Tolgee заводить нечего. `event.city` остался тем, чем и был: подписью ПОЛЯ
      города в окне события, а это другой смысл. */
-  { id: 'transit', labelKey: 'tse.node_visit', icon: 'bed', subKey: 'tse.pt_transit_sub' },
-  { id: 'waypoint', labelKey: 'tse.pt_waypoint', icon: 'arrowSwap', subKey: 'tse.pt_waypoint_sub' },
-  { id: 'start', labelKey: 'ai_plan.start', icon: 'flag', subKey: 'tse.pt_start_sub' },
-  { id: 'end', labelKey: 'ai_plan.end', icon: 'flag', subKey: 'tse.pt_end_sub' },
+  { id: 'transit', labelKey: 'tse.node_visit', art: 'point-transit', subKey: 'tse.pt_transit_sub' },
+  { id: 'waypoint', labelKey: 'tse.pt_waypoint', art: 'point-waypoint', subKey: 'tse.pt_waypoint_sub' },
+  { id: 'start', labelKey: 'ai_plan.start', art: 'point-start', subKey: 'tse.pt_start_sub' },
+  { id: 'end', labelKey: 'ai_plan.end', art: 'point-end', subKey: 'tse.pt_end_sub' },
 ];
 
 /**
@@ -119,7 +125,6 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
   // «Добавить» пишет вид, которого на экране не выбрать.
   const effKind = disabledFor(kind) ? 'transit' : kind;
   const submit = () => { if (city) { onAdd(city, effKind); close(); } };
-  const meta = POINT_TYPES.find((p) => p.id === effKind);
 
   // Докрутка тем же приёмом scrollIntoView, что и по всему аппу (ValidationUI,
   // CoverPicker, …) — в ЛЮБОМ скролл-контейнере (тело виджета на десктопе / тело
@@ -155,7 +160,23 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
       <SelectedCity city={city} onChange={backToSearch} />
 
       {/* Вид точки. aria-pressed несёт выбор в AT; тон активной плитки — из
-          .te-add-type[aria-pressed="true"]. */}
+          .te-add-type[aria-pressed="true"].
+
+          ★ ПОДСКАЗКА ЖИВЁТ В ПЛИТКЕ, А НЕ ПОД СЕТКОЙ. Строка субтитра была ОДНА
+          на четыре вида и показывала только ВЫБРАННЫЙ — то есть отвечала на
+          вопрос «что я уже выбрал», хотя задают его ДО выбора: чтобы сравнить
+          «с ночёвками» и «на 1 день», надо было потыкать плитки по очереди и
+          запомнить прочитанное. Теперь каждая плитка называет себя целиком
+          (картина · название · субтитр), и сравнение — это взгляд, а не перебор.
+          `title` остался только у ПОГАШЕННОЙ плитки: там он несёт причину («уже
+          задан»), которой в самой плитке нет; у живой он повторял бы субтитр,
+          который теперь и так виден.
+
+          Плашка под картину — канон-плитка <Tile>. Тон именно нейтральный
+          (`quiet`): правило «квадрат несёт оттенок значка» выведено для
+          ОДНОЦВЕТНОГО значка, а у полноцветной сцены своего оттенка нет; brand-
+          плашка вдобавок совпала бы байт-в-байт с грунтом ВЫБРАННОЙ плитки
+          (`--brand-soft`) и исчезла бы ровно на ней. */}
       <Col gap="g2">
         <span className="eyebrow">{t('tse.pt_type_label')}</span>
         <div className="te-add-grid" role="group" aria-label={t('tse.pt_type_label')}>
@@ -164,15 +185,17 @@ export default function CityAdder({ onAdd, hasStart, hasEnd, defaultKind = 'tran
             return (
               <button key={pt.id} type="button" className="te-add-type"
                 aria-pressed={effKind === pt.id} disabled={dis || undefined}
-                title={dis ? t('tse.already_set') : t(pt.subKey)}
+                title={dis ? t('tse.already_set') : undefined}
                 onClick={() => setKind(pt.id)}>
-                <Icon name={pt.icon} size={17} />
-                <span className="t-label">{t(pt.labelKey)}</span>
+                <Tile size="2xl" tone="quiet"><Illustration name={pt.art} /></Tile>
+                <Col gap="g1">
+                  <span className="t-label">{t(pt.labelKey)}</span>
+                  <span className="t-meta">{t(pt.subKey)}</span>
+                </Col>
               </button>
             );
           })}
         </div>
-        <span className="t-meta muted">{meta ? t(meta.subKey) : ''}</span>
       </Col>
     </>
   ) : null;

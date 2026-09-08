@@ -36,7 +36,7 @@ import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet, UnreadBadge,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Meter, Cover, CoverPicker,
-  BookingWarning, TimelineEmptyDay,
+  BookingWarning, TimelineEmptyDay, Illustration,
   CityBar, EventChip,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, EVENTCHIP_VARIANTS, toast,
@@ -45,6 +45,7 @@ import { Icon } from '@/design/icons';
 import Accordion from '@/components/common/Accordion';
 import Autocomplete from '@/components/common/Autocomplete';
 import { PickerSheet } from '@/components/ui/PickerSheet';
+import { POINT_TYPES } from '@/components/cities/CityAdder';
 import LpSheet from '@/components/ui/LpSheet';
 import { sheetScroller } from '@/components/ui/sheetShell';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
@@ -154,7 +155,10 @@ const TX = {
   fsPhaseHint: 'Вид точки', fsChange: 'Изменить', fsAdd: 'Добавить',
   // Подписи плиток — те же четыре вида точки, что у настоящего композера
   // (`cities/CityAdder`): витрина показывает ОБЪЕКТ, а не случайный текст.
+  // Сами виды приезжают из `POINT_TYPES` (оттуда же картины), здесь только
+  // подписи — страница вне i18n, звать `t()` ей нечем; порядок обязан совпадать.
   fsKinds: ['Посещение', 'Пересадка', 'Старт', 'Финиш'],
+  fsKindSubs: ['Остановка с ночёвками', 'На 1 день, без ночёвки', 'Начало поездки', 'Конец поездки'],
   fsDrill: 'Открыть переезд (слой поверх)', fsDrillTitle: 'Переезд',
   fsDrillBody: 'Второй слой ВНУТРИ той же шторки — как город → переезд в редакторе. Свайп вниз закрывает ПОВЕРХНОСТЬ, «Назад» снимает один слой.',
   cardTitle: 'Заголовок карточки', cardBody: 'Тело карточки: обычный текст на поверхности.',
@@ -455,8 +459,14 @@ function FullSurfaceDemo() {
             </div>
             <span className="eyebrow">{TX.fsPhaseHint}</span>
             <div className="te-add-grid">
-              {['bed', 'arrowSwap', 'flag', 'flag'].map((ic, i) => (
-                <button key={i} type="button" className="te-add-type"><Icon name={ic} size={17} /><span className="t-label">{TX.fsKinds[i]}</span></button>
+              {POINT_TYPES.map((pt, i) => (
+                <button key={pt.id} type="button" className="te-add-type">
+                  <Tile size="2xl" tone="quiet"><Illustration name={pt.art} /></Tile>
+                  <div className="col col--g1">
+                    <span className="t-label">{TX.fsKinds[i]}</span>
+                    <span className="t-meta">{TX.fsKindSubs[i]}</span>
+                  </div>
+                </button>
               ))}
             </div>
             <Btn variant="primary" onClick={() => setPicker(false)}>{TX.fsAdd}</Btn>
