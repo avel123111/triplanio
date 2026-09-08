@@ -5031,8 +5031,18 @@ button.input[data-empty] { color: var(--muted-2); }
    край так же встаёт на `--mapshell-panel-w` — коробка попиксельно прежняя, но
    сворачивание маршрута её больше не прячет.
    visual-diff-exempt: .mapshell__overlay right — правый край выражен шириной (слой съехал из колонки в шелл, коробка та же)
-   visual-diff-exempt: .mapshell__overlay width — ширина колонки минус её левый воздух (правый край на том же --mapshell-panel-w) */
-.mapshell__overlay { position: absolute; top: var(--sp-7); bottom: var(--sp-7); left: var(--sp-7); width: calc(var(--mapshell-panel-w) - var(--sp-7)); display: flex; z-index: 3; }
+   visual-diff-exempt: .mapshell__overlay width — ширина колонки минус её левый воздух (правый край на том же --mapshell-panel-w)
+   Левый край — ТОТ ЖЕ, что у колонки панели: за полосой хоста (`--mapshell-inset-left`,
+   рейл трипа над холстом) плюс её левый воздух. Слой — поверх панели, а не поверх
+   холста: без полосы он вставал от края холста и уходил под рейл.
+   visual-diff-exempt: .mapshell__overlay left — слой встаёт правее рейла вместе с панелью (полоса хоста + воздух)
+   visual-diff-exempt: .mapshell__overlay transition — левый край едет за панелью тем же темпом */
+.mapshell__overlay {
+  position: absolute; top: var(--sp-7); bottom: var(--sp-7);
+  left: calc(var(--mapshell-inset-left, 0px) + var(--sp-7)); width: calc(var(--mapshell-panel-w) - var(--sp-7));
+  display: flex; z-index: 3;
+  transition: left var(--surface-settle, .32s) var(--surface-ease, ease);
+}
 /* Слот слоя всегда в дереве (в него рендерят порталом); пустой — не рисуется,
    иначе он ловил бы клики над панелью.
    visual-diff-exempt: .mapshell__overlay:empty display — пустой слот слоя не рисуется */
