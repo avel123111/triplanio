@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useT } from '@/lib/i18n/I18nContext';
 import { BRAND_NAME } from '@/lib/brand';
 import { LangSwitch } from '@/components/site/SiteChrome';
+import { useZonePath } from '@/components/site/zoneCta';
 import LandingSprite from '@/components/site/LandingSprite';
 
 /* =========================================================
@@ -15,6 +16,22 @@ import LandingSprite from '@/components/site/LandingSprite';
 ========================================================= */
 export default function AuthShell({ lang, setLang, activeScreen, children }) {
   const t = useT();
+  // ★★ ЛОГОТИП ВЕДЁТ НА ГЛАВНУЮ ТОГО ЖЕ ЯЗЫКА (TRIP-520).
+  //
+  // Голый `to="/"` здесь стоил языка на КАЖДОМ визите, и терял его молча:
+  //
+  //     /es  →  «Начать»  →  /login (испанский)  →  логотип  →  /  (английский)
+  //
+  // Причина не в ссылке, а в адресной модели: `/` — это КАНОНИЧЕСКИЙ АНГЛИЙСКИЙ
+  // адрес (`localeOf`), то есть верхний слой языка, который побеждает и профиль,
+  // и выбор посетителя. Ссылка на `/` — не «домой», а «домой по-английски».
+  //
+  // Вход и приглашение — единственные страницы зоны, чей логотип рисует НЕ
+  // `SiteChrome`: у них своя оболочка. Поэтому проход TRIP-520, переведший
+  // лендинг, демо, публичку и юр-страницы на `useZonePath`, прошёл мимо ровно
+  // здесь — а это самый ходовой выход из зоны. Гард 2ah `check-zone-lang-links`
+  // держит инвариант вместо доброй воли.
+  const home = useZonePath('/');
   // Ротатор арт-пейна (декоративный, aria-hidden): крутит 3 строки прототипа.
   const [rot, setRot] = useState(0);
   useEffect(() => {
@@ -66,7 +83,7 @@ export default function AuthShell({ lang, setLang, activeScreen, children }) {
         {/* on-light: светлая шапка — темит общий LangSwitch (.lang-btn) в ink,
             как на светлых секциях лендинга. Реюз, не дубль (rule #6). */}
         <header className="pane-top on-light">
-          <Link to="/" className="av-brand">
+          <Link to={home} className="av-brand">
             <svg className="av-logo" width="33" height="33" aria-hidden="true"><use href="#tl-logo" /></svg>
             <span>{BRAND_NAME}</span>
           </Link>

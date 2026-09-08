@@ -28,20 +28,36 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SITE_ZONE } from '../../../scripts/ci/zone-perimeter.mjs';
 
 const ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const SRC = join(ROOT, 'src');
 
-/** Все файлы зоны: сама обвязка и страницы, которые она обслуживает. */
+/**
+ * Все файлы зоны — из ОБЩЕГО периметра (`scripts/ci/zone-perimeter.mjs`), а не
+ * своим списком.
+ *
+ * ★ ЗДЕСЬ СТОЯЛ ЧЕТВЁРТЫЙ ПЕРИМЕТР, И ОН СТОИЛ ПРОДА. Свой список
+ * (`components/site`, `Landing`, `Demo`, `Legal.jsx`) не знал ни про
+ * `PublicTrip.jsx`, ни про `Login.jsx`, ни про `JoinTrip.jsx` — то есть ровно
+ * та болезнь, ради лечения которой заведён `zone-perimeter.mjs`: «разъехавшийся
+ * периметр молча становится вердиктом — гейт отвечает „чисто“ про дерево,
+ * половину которого не открывал». Из-за него кнопка «На главную» на ошибке
+ * приглашения (`JoinTrip.jsx`) не судилась вообще.
+ *
+ * Периметр — половина беды; вторая половина была в ПРЕДИКАТЕ: проверка №1 ниже
+ * смотрит только на `DEMO_PATH` и литерал `to="/"` не видит, поэтому логотип
+ * входа (`AuthShell.jsx`, В ПЕРИМЕТРЕ) сбрасывал язык на глазах у зелёного
+ * гейта. Обобщённый предикат теперь несёт гард 2ah `check-zone-lang-links`.
+ */
 function zoneFiles() {
-  const roots = ['components/site', 'pages/Landing', 'pages/Demo', 'pages/Legal.jsx'];
   const out = [];
   const walk = (p) => {
     const st = statSync(p);
     if (st.isDirectory()) { readdirSync(p).forEach((f) => walk(join(p, f))); return; }
     if (/\.(jsx?|tsx?)$/.test(p) && !p.endsWith('.test.js')) out.push(p);
   };
-  roots.forEach((r) => walk(join(SRC, r)));
+  SITE_ZONE.forEach((r) => walk(join(ROOT, r)));
   return out;
 }
 
@@ -77,7 +93,18 @@ test('★★ адрес зоны не читается мимо роутера',
   const offenders = [];
   for (const file of zoneFiles()) {
     for (const [n, line] of codeLines(file)) {
-      if (/window\s*\.\s*location\s*\.\s*pathname/.test(line)) {
+      if (!/window\s*\.\s*location\s*\.\s*pathname/.test(line)) continue;
+      // ★ ИСКЛЮЧЕНИЕ — ПЕРЕПИСЬ САМОГО АДРЕСА, а не вычисление ссылки.
+      // `history.replaceState`/`pushState` обязаны получить ЖИВОЙ адрес
+      // документа: роутер здесь не источник — он про то, что нарисовано, а
+      // переписывается то, что в строке браузера (`Login.jsx` снимает из адреса
+      // отказ OAuth). Пережить смену языка такому значению нечем: оно
+      // вычисляется и тут же уходит в вызов, никакой переменной не остаётся.
+      // Исключение узкое НАМЕРЕННО — оно требует ВЫЗОВА history в той же
+      // строке, поэтому `const home = window.location.pathname` (тот самый
+      // кэш, ради которого проверка написана) под него не попадает.
+      if (/history\s*\.\s*(replace|push)State\s*\(/.test(line)) continue;
+      {
         offenders.push(`${relative(ROOT, file)}:${n}  ${line.trim()}`);
       }
     }

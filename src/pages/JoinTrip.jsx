@@ -10,6 +10,10 @@ import AuthShell from '@/components/site/AuthShell';
 // проверкой адреса — здесь только вызовы (TRIP-497).
 import { rememberPostLogin, forgetPostLogin } from '@/lib/postLoginPath';
 import { SIGNUP_PATH } from '@/lib/authEntry';
+// Главная — АДРЕС ТОГО ЖЕ ЯЗЫКА, а не голый `/`: тот канонически английский и
+// как верхний слой языка перебивает и профиль, и выбор посетителя (см. докблок
+// логотипа в `AuthShell.jsx`). Гард 2ah.
+import { useZonePath } from '@/components/site/zoneCta';
 
 
 // Maps the invite-link edge function's machine `code` to its error i18n key.
@@ -25,6 +29,7 @@ const ERR_KEY_BY_CODE = {
 export default function JoinTrip() {
   const { token } = useParams();
   const nav = useNavigate();
+  const home = useZonePath('/');
   const { t, lang, setLang } = useI18n();
   const cssReady = useSiteCss(); // зонная ДС; не рисуем до готовности (FOUC-иконки)
   const [state, setState] = useState('working'); // working | signin | error
@@ -124,7 +129,7 @@ export default function JoinTrip() {
               <span className="av-btn-label"><span>{t('member.join_to_app')}</span></span>
               <span className="av-spin" aria-hidden="true" />
             </button>
-            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav('/')}>
+            <button type="button" className="av-btn av-btn-quiet av-btn-block" onClick={() => nav(home)}>
               <span className="av-btn-label"><span>{t('member.join_home')}</span></span>
               <span className="av-spin" aria-hidden="true" />
             </button>
