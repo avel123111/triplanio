@@ -266,8 +266,9 @@
      visual-diff-exempt: :root --mapshell-panel-w — токен переехал с .mapshell в :root (то же значение, снятие с .mapshell объявлено там же) */
   --mapshell-panel-w: clamp(540px, 46vw, 620px);
   /* Ширина ВТОРОЙ колонки шелла (черновик маршрута у визарда, TRIP-535). Рядом
-     с шириной панели, а не в её карьере: у пары одна арифметика — на 1280
-     (порог `TWO_COL_MIN_W`) панель 588 + колонка 340 оставляют карте ~350.
+     с шириной панели, а не в её карьере: у пары одна арифметика — сколько на
+     пороге двух колонок остаётся карте. Сам порог и его расчёт живут в ОДНОМ
+     месте — `TWO_COL_MIN_W` (`hooks/use-mobile.jsx`), здесь только ширина.
      floor-exempt: tokens +1 — ширина второй колонки шелла, апрув Pavel (TRIP-535)
      visual-diff-exempt: :root --mapshell-aside-w — новый токен ширины второй колонки */
   --mapshell-aside-w: clamp(300px, 24vw, 360px);
@@ -4822,8 +4823,8 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Список черновика. Отступа сверху у него больше НЕТ: он не стоит под репликой
    бота (TRIP-535) — его подпирает своя поверхность, а воздух даёт она.
    visual-diff-exempt: .pl-ai-draft margin-top — черновик ушёл из ленты в свою поверхность, зазор от реплики не нужен */
-/* Ряды маршрута под лентой ИИ: между рядами волосяная линия и воздух, чтобы
-   двухстрочный ряд читался как один (внутри строки прижаты, см. PanelAi).
+/* Ряды черновика маршрута: между рядами волосяная линия и воздух, чтобы
+   двухстрочный ряд читался как один (внутри строки прижаты, см. `DraftItinerary`).
    visual-diff-exempt: .pl-ai-draft > * + * border-top — разделитель рядов маршрута под лентой
    visual-diff-exempt: .pl-ai-draft > * + * padding-top — воздух над рядом после разделителя */
 .pl-ai-draft > * + * { border-top: 1px solid var(--line); padding-top: var(--sp-3); }
@@ -5062,7 +5063,7 @@ button.input[data-empty] { color: var(--muted-2); }
    floor-exempt: classes +1 — `.mapshell__aside`: коробка второй колонки шелла, апрув Pavel (TRIP-535)
    floor-exempt: layout +1 — тот же класс в счёте приватной раскладки: это коробка ШЕЛЛА, а не экрана, апрув Pavel (TRIP-535)
    visual-diff-exempt: .mapshell__aside position — коробка второй колонки
-   visual-diff-exempt: .mapshell__aside top — колонка уступает панели по высоте
+   visual-diff-exempt: .mapshell__aside top — колонка уступает панели по высоте (её воздух втрое больше)
    visual-diff-exempt: .mapshell__aside bottom — то же
    visual-diff-exempt: .mapshell__aside left — заезд под панель на радиус
    visual-diff-exempt: .mapshell__aside width — ширина колонки плюс тот же заезд
@@ -5073,13 +5074,20 @@ button.input[data-empty] { color: var(--muted-2); }
    visual-diff-exempt: .mapshell__card border-start-start-radius — то же про левые скругления
    visual-diff-exempt: .mapshell__card border-end-start-radius — то же */
 .mapshell__aside {
-  position: absolute; top: calc(var(--sp-7) + 24px); bottom: calc(var(--sp-7) + 24px);
+  position: absolute; top: calc(var(--sp-7) * 3); bottom: calc(var(--sp-7) * 3);
   left: calc(var(--mapshell-inset-left, 0px) + var(--mapshell-panel-w) - var(--r-btn));
   width: calc(var(--mapshell-aside-w) + var(--r-btn));
   display: flex; z-index: 1;
   transition: left var(--surface-settle, .32s) var(--surface-ease, ease);
 }
 .mapshell__aside > .mapshell__card { border-left: 0; border-start-start-radius: 0; border-end-start-radius: 0; }
+/* ВОЗДУХ ВОКРУГ СОДЕРЖИМОГО КОЛОНКИ ДАЁТ ШЕЛЛ — по той же причине, по которой
+   он даёт его шапке (`.mapshell__head`): у колонки нет экранной обёртки вроде
+   `.flow-lp-b`, которая держит его у панели, и каждый следующий жилец
+   изобретал бы отступы заново. У самой панели правило ничего не меняет —
+   селектор скоупнут на колонку.
+   visual-diff-exempt: .mapshell__body padding — воздух вокруг содержимого ВТОРОЙ колонки (правило скоупнуто на неё; у панели воздух по-прежнему от экрана) */
+.mapshell__aside .mapshell__body { padding: var(--sp-6) var(--sp-7); }
 
 .mapshell__overlay {
   position: absolute; top: var(--sp-7); bottom: var(--sp-7);

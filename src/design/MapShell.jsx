@@ -180,7 +180,7 @@ export function MapShell({
   const statusSlot = useCallback((/** @type {HTMLElement | null} */ el) => { statusRef.current = el; onSlotRef.current?.('status', el); }, []);
   const insetTopRef = useRef(insetTop);
   insetTopRef.current = insetTop;
-  // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Ширина панели известна только после раскладки
+  // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Правый край колонок известен только после раскладки
   // (`useLayoutEffect` ниже), а первый рендер шелла идёт до неё. Пока здесь стоял
   // ноль, карта на первом же кадре получала отступ 0 (маршрут центрировался ПОД
   // панелью), а через кадр — измеренные ~620 px, и `useMapInsets` честно ЕХАЛ из
@@ -190,11 +190,10 @@ export function MapShell({
   // это отдаётся коробками `null` в `view` — она ничего не трогает; замер приезжает
   // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
   // ставится без движения.
-  const [panelW, setPanelW] = useState(/** @type {number | null} */ (null));   // правый край колонок
   // Правый край КОЛОНОК от края холста — уже вместе с полосой хоста слева (см.
   // `measureCols`). Левее панели закрыто НЕ панелью (рейл трипа над холстом), и
   // это остаётся закрытым, когда панель свёрнута (`offsetPx`).
-  const panelPx = panelW;
+  const [panelPx, setPanelPx] = useState(/** @type {number | null} */ (null));
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -204,10 +203,11 @@ export function MapShell({
   // причины следующий читатель принял бы за работающий.
   const applySheetPx = useCallback((next, cap) => { setCapPx(cap || 0); setSheetPx(next); }, []);
 
-  // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
-  // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
-  // число разъехалось бы с ней на первой же правке раскладки. Положение
-  // панели, напротив, приходит числом от хоста (`insetLeft`).
+  // Ширину колонок МЕРЯЕМ, а не берём из констант: она задана в CSS
+  // (`--mapshell-panel-w`/`--mapshell-aside-w`, там `clamp()` от вьюпорта), и
+  // продублированное в JS число разъехалось бы с ней на первой же правке
+  // раскладки. Положение колонок (полоса хоста слева) входит в тот же замер
+  // само — см. `measureCols`.
   // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
   // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
   // возвращается, и остаток пути доезжает той же кривой, что и шит.
@@ -231,12 +231,13 @@ export function MapShell({
   // ложную полосу на все 320 мс анимации. Полоса хоста слева (рейл) входит сюда
   // сама: панель стоит на `left: var(--mapshell-inset-left)`.
   const measureCols = useCallback(() => {
-    const right = (/** @type {HTMLElement | null} */ el) => (el ? el.offsetLeft + el.offsetWidth : 0);
-    setPanelW(Math.max(0, Math.round(Math.max(right(panelRef.current), right(asideRef.current)))));
+    const rightEdge = (/** @type {HTMLElement | null} */ el) => (el ? el.offsetLeft + el.offsetWidth : 0);
+    const px = Math.max(rightEdge(panelRef.current), rightEdge(asideRef.current));
+    setPanelPx(Math.max(0, Math.round(px)));
   }, []);
 
   useLayoutEffect(() => {
-    if (isPhone) { setPanelW(0); return undefined; }
+    if (isPhone) { setPanelPx(0); return undefined; }
     measureCols();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measureCols) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);

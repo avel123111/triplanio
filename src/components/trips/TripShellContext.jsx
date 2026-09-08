@@ -177,6 +177,7 @@ export function useShellMapProps() {
  * мутации, стор оповещает слот синхронно, до отрисовки).
  *
  * Имена слотов: `panelHead` · `panelBody` · `panelFoot` · `panelOverlay` ·
+ * `sideHead`/`sideBody` (вторая колонка шелла, живёт только под `sideOpen`) ·
  * `status` (полоса статуса над низом карты) · `mapOverlay` (плавающие контролы
  * над картой) · `content` (ящик у `.trip-content`) · `shell` (оверлеи у
  * `.trip-shell`). Скроллер тела секции — не слот, а реф `host.mainRef`.
