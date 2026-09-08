@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 
 import { serveDist } from '../build/_serve.mjs';
 import { fileFor, SHELL_FILE } from '../build/prerenderPaths.mjs';
-import { prerenderedUrls, LOCALISED_PAGES, splitLangPath, PREFIXED_LANGS } from '../../src/lib/routePaths.js';
+import { prerenderedUrls, HREFLANG_PAGES, splitLangPath, PREFIXED_LANGS } from '../../src/lib/routePaths.js';
 
 const DIST = fileURLToPath(new URL('../../dist', import.meta.url));
 const PORT = 5177;
@@ -91,7 +91,12 @@ try {
     check(!/id="splash"/.test(html), `${url}: заставки нет`);
 
     const alts = [...html.matchAll(/hreflang="([^"]+)"/g)].map((m) => m[1]);
-    const want = LOCALISED_PAGES.includes(path) ? ['en', ...PREFIXED_LANGS, 'x-default'].sort() : [];
+    // ★ ПО СПИСКУ ОБЕЩАНИЙ, А НЕ ПО «ЕСТЬ АДРЕС НА ЯЗЫК» (TRIP-533). Это тот же
+    // вопрос, что решают `prerenderedUrls()` и `SiteZone`, и спрашивать его надо
+    // тем же списком: языковой адрес есть у всей зоны, а версии мы обещаем
+    // только лендингу и демо. Спроси здесь `LOCALISED_PAGES` — и гард требовал
+    // бы четыре hreflang на `/terms`, которых страница намеренно не ставит.
+    const want = HREFLANG_PAGES.includes(path) ? ['en', ...PREFIXED_LANGS, 'x-default'].sort() : [];
     check(JSON.stringify(alts.sort()) === JSON.stringify(want),
       `${url}: языковые версии объявлены верно (${alts.length})`);
   }

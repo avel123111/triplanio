@@ -35,8 +35,9 @@ import LandingPage from '@/pages/Landing/LandingPage';
 import { SiteZone } from '@/components/site/SiteChrome';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { APP_ROUTES, isZoneRoute, splitLangPath } from '@/lib/routePaths';
-import { initialAuthView } from '@/lib/authEntry';
+import { initialAuthView, LOGIN_PATH } from '@/lib/authEntry';
 import { rememberPostLogin } from '@/lib/postLoginPath';
+import { useZoneHref } from '@/components/site/zoneCta';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
 
@@ -135,8 +136,11 @@ function screenOpenEvent(raw, search) {
  */
 function RedirectToLogin() {
   const { pathname, search } = useLocation();
+  const zoneHref = useZoneHref();
   rememberPostLogin(pathname + search);
-  return <Navigate to={withVisitCampaign('/login')} replace />;
+  // Адрес входа — через резолвер зоны, а не голым `/login` (TRIP-533; почему
+  // именно так — в докблоке `useZoneHref`).
+  return <Navigate to={zoneHref(withVisitCampaign(LOGIN_PATH))} replace />;
 }
 
 const AuthenticatedApp = () => {

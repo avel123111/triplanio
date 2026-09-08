@@ -6,7 +6,7 @@ import { useLightZone } from '@/lib/ThemeContext';
 import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
-import { isZonePage, splitLangPath, withLangPath, PREFIXED_LANGS, LOCALISED_PAGES } from '@/lib/routePaths';
+import { isZonePage, splitLangPath, withLangPath, PREFIXED_LANGS, LOCALISED_PAGES, HREFLANG_PAGES } from '@/lib/routePaths';
 import { useZoneCta, isPlainLeftClick, useZoneHref, useZoneNav } from './zoneCta';
 import { withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
@@ -609,14 +609,13 @@ export function SiteZone({ children }) {
   //
   // ★ РЯДОМ С CANONICAL — СПИСОК ЯЗЫКОВЫХ ВЕРСИЙ (TRIP-520). Пока язык жил в
   // состоянии приложения, связывать было нечего, и `hreflang` здесь сознательно
-  // отсутствовал. Теперь у каждой испечённой страницы три адреса, и без этого
-  // списка поисковик видит три РАЗНЫЕ страницы вместо трёх версий одной: они
-  // конкурируют друг с другом, а испанцу в выдаче показывается английская.
-  // `x-default` — тот же бесперфиксный адрес: он и есть ответ на «язык
-  // посетителя нам неизвестен».
+  // отсутствовал. Теперь у страницы три адреса, и без этого списка поисковик
+  // видит три РАЗНЫЕ страницы вместо трёх версий одной: они конкурируют друг с
+  // другом, а испанцу в выдаче показывается английская. `x-default` — тот же
+  // беспрефиксный адрес: он и есть ответ на «язык посетителя нам неизвестен».
   //
-  // Только у испечённых страниц: у входа и восстановления языковых адресов нет
-  // (готового файла на язык у них нет и быть не может), и обещать их нельзя.
+  // Только у тех, чьи версии мы поиску ОБЕЩАЕМ (`HREFLANG_PAGES`) — это уже не
+  // все, у кого языковой адрес есть; разбор различия — ниже, у самой развилки.
   //
   // ★★ СНАЧАЛА СНОСИМ ЧУЖИЕ, ПОТОМ СТАВИМ СВОИ (TRIP-520). У испечённой страницы
   // эти теги УЖЕ ЛЕЖАТ В ФАЙЛЕ — выпечка сняла их с этого же эффекта. Добавь мы
@@ -645,8 +644,21 @@ export function SiteZone({ children }) {
       document.head.appendChild(link);
       links.push(link);
     };
-    add('canonical', pathname);
-    if (LOCALISED_PAGES.includes(path)) {
+    // ★★ КАНОНИЧЕСКИЙ АДРЕС ЗАВИСИТ ОТ ТОГО, ОБЕЩАЕМ ЛИ МЫ ЯЗЫКОВЫЕ ВЕРСИИ
+    // (TRIP-533). Языковой адрес теперь есть у ВСЕЙ зоны, а обещание поиску —
+    // только у лендинга и демо (`HREFLANG_PAGES`), и это две разные вещи:
+    //
+    //   · обещаем  → каждая версия каноническая САМА СЕБЕ, и они связаны
+    //     hreflang; иначе поисковик видит три разные страницы вместо трёх
+    //     версий одной, они конкурируют, и испанцу показывается английская;
+    //   · не обещаем → языковая форма существует и работает, но в индексе ей
+    //     делать нечего: `/es/login` и `/es/terms` почти дословно повторяют
+    //     беспрефиксные, а у юр-документов проза вообще одна и та же
+    //     английская. Канонизируем их на беспрефиксную форму — тогда вес не
+    //     дробится, а дублей в выдаче не появляется.
+    const advertised = HREFLANG_PAGES.includes(path);
+    add('canonical', advertised ? pathname : path);
+    if (advertised) {
       add('alternate', path, 'en');
       for (const code of PREFIXED_LANGS) add('alternate', withLangPath(code, path), code);
       add('alternate', path, 'x-default');

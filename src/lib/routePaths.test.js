@@ -18,7 +18,8 @@ import { dirname, join } from 'node:path';
 
 import {
   APP_ROUTES, ZONE_PAGES, PRERENDERED_PAGES, LOCALISED_PAGES, PREFIXED_LANGS, DEFAULT_LANG,
-  isZonePage, isZoneRoute, splitLangPath, withLangPath, prerenderedUrls, localeOf, zoneHref,
+  isZonePage, isZoneRoute, isAppRoute, isKnownPath, splitLangPath, withLangPath,
+  prerenderedUrls, localeOf, zoneHref, HREFLANG_PAGES,
 } from './routePaths.js';
 import { LANGUAGES, FALLBACK_LANG } from './i18n/translations.js';
 import { DEMO_PATH } from '../pages/Demo/demoPath.js';
@@ -88,22 +89,33 @@ test('DEFAULT_LANG не разошёлся с фолбэком языка', () =
   assert.equal(DEFAULT_LANG, FALLBACK_LANG);
 });
 
-test('★★ локаль адреса есть ровно у ПЕРЕВЕДЁННЫХ страниц, а не у испечённых', () => {
-  // Несущее различие: «испечена» и «переведена» — разные списки. У `/terms`
-  // готовый файл есть, а языкового адреса нет, и обещать язык нельзя: обвязка
-  // этих страниц переведена, и переутверждение с адреса откатывало бы выбор
-  // человека на каждом переходе между вкладками документов.
+test('★★ адрес СТРАНИЦЫ зоны говорит о языке всегда; молчат capability-адреса и приложение', () => {
+  // Несущее различие сменилось (TRIP-533). Раньше локаль была у подмножества
+  // зоны, и там, где адрес молчал, язык падал на слой устройства — из этого рос
+  // весь класс «язык слетает при навигации». Теперь локаль есть у ВСЕГО дерева
+  // страниц зоны, и молчат ровно две вещи, и обе по правилу домена:
+  //   · одноразовые capability-адреса — язык принадлежит ПОЛУЧАТЕЛЮ ссылки;
+  //   · экраны приложения — там авторитет у языка профиля в БД.
   for (const page of LOCALISED_PAGES) {
     assert.equal(localeOf(page), DEFAULT_LANG, `${page}: беспрефиксный адрес — язык по умолчанию`);
     for (const code of PREFIXED_LANGS) {
       assert.equal(localeOf(withLangPath(code, page)), code, `${withLangPath(code, page)}`);
     }
   }
-  for (const page of PRERENDERED_PAGES.filter((p) => !LOCALISED_PAGES.includes(p))) {
-    assert.equal(localeOf(page), null, `${page}: языковых версий нет — адрес про язык обязан молчать`);
-  }
-  for (const page of ['/login', '/join/abc', '/public/trip/1', '/trips', '/de']) {
+  for (const page of ['/join/abc', '/public/trip/1', '/de']) {
     assert.equal(localeOf(page), null, `${page}: адрес про язык обязан молчать`);
+  }
+  // ★★ ПРИЛОЖЕНИЕ. Язык там — из профиля (`users.language`), и адрес не имеет
+  // права его переутверждать: иначе вошедший с русским профилем открывал бы
+  // английский экран, а вернуть как было не умел бы никто.
+  for (const pattern of APP_ROUTES) {
+    const path = pattern.replace(/:[^/]+/g, 'x');
+    assert.equal(localeOf(path), null, `${path}: экран приложения — язык из профиля, адрес молчит`);
+    for (const code of PREFIXED_LANGS) {
+      assert.equal(isZonePage(withLangPath(code, path)), false, `${withLangPath(code, path)} не существует`);
+      assert.equal(isAppRoute(withLangPath(code, path)), false, `${withLangPath(code, path)} не экран приложения`);
+      assert.equal(isKnownPath(withLangPath(code, path)), false, `${withLangPath(code, path)} обязан быть 404`);
+    }
   }
 });
 
@@ -127,23 +139,18 @@ test('разбор и сборка адреса с языком — обратн
   }
 });
 
-test('языковые адреса ПЕРЕВЕДЁННЫХ страниц — страницы зоны, чужие под префиксом — нет', () => {
+test('под префиксом живёт ВСЯ зона-как-страницы; capability-адреса — нет', () => {
   for (const lang of PREFIXED_LANGS) {
     for (const path of LOCALISED_PAGES) {
       const url = withLangPath(lang, path);
       assert.equal(isZonePage(url), true, `${url} — страница зоны`);
       assert.equal(isZoneRoute(url), true, `${url} — адрес зоны`);
     }
-    // ★ Под префиксом живут ТОЛЬКО ПЕРЕВЕДЁННЫЕ страницы. У входа готового файла
-    // на язык нет и быть не может; у юр-документов текст английский по решению —
-    // `/ru/terms` обещал бы русскую страницу и отдавал английскую.
-    assert.equal(isZonePage(`/${lang}/login`), false, `/${lang}/login не должен существовать`);
-    assert.equal(isZoneRoute(`/${lang}/login`), false);
-    for (const legal of ['/terms', '/privacy']) {
-      assert.equal(PRERENDERED_PAGES.includes(legal), true, `${legal} обязан печься`);
-      assert.equal(LOCALISED_PAGES.includes(legal), false, `${legal} переводом не является`);
-      assert.equal(isZonePage(`/${lang}${legal}`), false, `/${lang}${legal} обещал бы перевод, которого нет`);
-      assert.equal(isZoneRoute(`/${lang}${legal}`), false);
+    // ★ Одноразовые capability-адреса языкового адреса НЕ получают: язык такой
+    // ссылки принадлежит получателю, а не отправителю (см. LOCALISED_PAGES).
+    for (const cap of ['/public/trip/abc', '/join/abc']) {
+      assert.equal(isZonePage(`/${lang}${cap}`), false, `/${lang}${cap} не должен существовать`);
+      assert.equal(isZoneRoute(`/${lang}${cap}`), false);
     }
     // Чужой демо-слаг под префиксом ведёт в зону (за её 404), но страницей не является.
     assert.equal(isZoneRoute(`/${lang}/d/opechatka`), true);
@@ -151,11 +158,29 @@ test('языковые адреса ПЕРЕВЕДЁННЫХ страниц — 
   }
 });
 
+test('★ hreflang-список — ПОДМНОЖЕСТВО языковых адресов, и он про обещание поиску', () => {
+  for (const p of HREFLANG_PAGES) {
+    assert.ok(LOCALISED_PAGES.includes(p), `${p} обещан поиску, но языкового адреса у него нет`);
+    assert.ok(PRERENDERED_PAGES.includes(p), `${p} обещан поиску, но не печётся`);
+  }
+  // Юр-документы: языковой адрес ЕСТЬ (обвязка переведена), обещания поиску НЕТ
+  // (текст английский по решению TRIP-465 §7) — ровно то различие, ради которого
+  // список раздвоен.
+  for (const legal of ['/terms', '/privacy']) {
+    assert.ok(LOCALISED_PAGES.includes(legal), `${legal}: обвязка переведена — языковой адрес нужен`);
+    assert.equal(HREFLANG_PAGES.includes(legal), false, `${legal}: обещать перевод английской прозы нельзя`);
+  }
+  for (const auth of ['/login', '/reset-password']) {
+    assert.ok(LOCALISED_PAGES.includes(auth), `${auth}: переведён, языковой адрес нужен`);
+    assert.equal(HREFLANG_PAGES.includes(auth), false, `${auth}: искать его незачем`);
+  }
+});
+
 test('prerenderedUrls перечисляет каждую испечённую страницу на каждом языке', () => {
   const urls = prerenderedUrls();
-  assert.equal(urls.length, PRERENDERED_PAGES.length + LOCALISED_PAGES.length * PREFIXED_LANGS.length);
-  // Каждая переведённая страница обязана быть в выпечке на каждом языке.
-  for (const path of LOCALISED_PAGES) {
+  assert.equal(urls.length, PRERENDERED_PAGES.length + HREFLANG_PAGES.length * PREFIXED_LANGS.length);
+  // Каждая ОБЕЩАННАЯ ПОИСКУ страница обязана быть в выпечке на каждом языке.
+  for (const path of HREFLANG_PAGES) {
     for (const lang of PREFIXED_LANGS) assert.ok(urls.includes(withLangPath(lang, path)), `${path} на ${lang} не печётся`);
   }
   assert.equal(new Set(urls).size, urls.length, 'в списке выпечки есть повтор');
@@ -226,7 +251,7 @@ test('★ английский живёт БЕЗ префикса — это а�
 test('★★ НЕлокализованной странице префикс не приклеивается — такого адреса не существует', () => {
   // Именно тут ошибался бы голый `withLangPath`: он вернул бы `/ru/login`,
   // адрес, которого нет ни в одном маршруте (`isZoneRoute` его не знает).
-  for (const path of ['/login', '/terms', '/privacy', '/reset-password', '/trips']) {
+  for (const path of ['/trips', '/settings', '/public/trip/abc', '/join/abc']) {
     assert.equal(zoneHref(path, 'ru'), path, path);
     assert.equal(zoneHref(path, 'es'), path, path);
     assert.equal(isZoneRoute(zoneHref(path, 'ru')) || !isZonePage(path), true, path);
@@ -244,7 +269,8 @@ test('★★ идемпотентен: адрес можно прогнать ч
 test('★ хвост адреса переживает резолв — в нём якорь и метка кампании', () => {
   assert.equal(zoneHref('/?camp=x#together', 'es'), '/es?camp=x#together');
   assert.equal(zoneHref('/#together', 'ru'), '/ru#together');
-  assert.equal(zoneHref('/login?mode=signup', 'ru'), '/login?mode=signup');
+  assert.equal(zoneHref('/login?mode=signup', 'ru'), '/ru/login?mode=signup', 'вход теперь тоже имеет языковой адрес');
+  assert.equal(zoneHref('/public/trip/abc?t=x', 'ru'), '/public/trip/abc?t=x', 'capability-адрес языка не получает');
   assert.equal(zoneHref('/es?camp=x', 'ru'), '/ru?camp=x', 'хвост не мешает снять чужой префикс');
 });
 

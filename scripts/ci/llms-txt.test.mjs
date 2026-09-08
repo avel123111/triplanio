@@ -35,7 +35,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { LANGUAGES } from '../../src/lib/i18n/translations.js';
-import { PREFIXED_LANGS, localeOf } from '../../src/lib/routePaths.js';
+import { PREFIXED_LANGS, localeOf, splitLangPath, HREFLANG_PAGES } from '../../src/lib/routePaths.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -151,20 +151,28 @@ test('★ ссылки записаны ССЫЛКАМИ — иначе для �
   assert.match(LLMS, /^# \S/m, 'у llms.txt пропал заголовок H1 — без него файл не разбирается');
 });
 
-test('у каждой ссылки назван язык, который называет её адрес', () => {
-  // Язык в подписи — утверждение, и решать его обязан ТОТ ЖЕ предикат, что
-  // решает язык в приложении (`localeOf`), а не глаз редактора. У юр-документов
-  // языкового адреса нет (TRIP-465 §7) — у них и упоминания языка быть не
-  // должно, иначе файл обещает версии, которых не существует.
+test('у каждой ссылки назван язык ровно тогда, когда мы обещаем языковые версии', () => {
+  // Язык в подписи — обещание, и решать его обязан ТОТ ЖЕ предикат, что решает
+  // состав карты сайта и hreflang: `HREFLANG_PAGES`.
+  //
+  // ★ ПРЕДИКАТ СМЕНИЛСЯ ВМЕСТЕ С МОДЕЛЬЮ (TRIP-533). Раньше спрашивали
+  // `localeOf`, и это совпадало со списком обещаний только потому, что языковой
+  // адрес был у одних лишь лендинга и демо. Теперь языковой адрес есть у ВСЕЙ
+  // зоны, а обещаем мы по-прежнему две страницы — и `localeOf` начал отвечать
+  // `en` про `/terms`, требуя написать в подписи «English» о документе, русской
+  // версии которого не существует. Вопрос «есть ли адрес на язык» и вопрос
+  // «обещаем ли мы версии» — разные, и здесь нужен второй.
   for (const { text, url } of LINKS) {
-    const locale = localeOf(new URL(url).pathname);
-    if (locale) {
+    const pathname = new URL(url).pathname;
+    const { path } = splitLangPath(pathname);
+    if (HREFLANG_PAGES.includes(path)) {
+      const locale = localeOf(pathname);
       assert.ok(text.includes(languageName.of(locale)),
-        `${url} — адрес называет язык ${locale}, а подпись ссылки «${text}» его не называет`);
+        `${url} — версии этой страницы обещаны, а подпись «${text}» не называет язык ${locale}`);
     } else {
       for (const { code } of LANGUAGES) {
         assert.ok(!text.includes(languageName.of(code)),
-          `${url} — у этого адреса языковой версии нет, а подпись «${text}» обещает ${languageName.of(code)}`);
+          `${url} — языковых версий этой страницы мы не обещаем, а подпись «${text}» обещает ${languageName.of(code)}`);
       }
     }
   }

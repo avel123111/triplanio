@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SystemStub } from '@/lib/PageNotFound';
+import { useZoneHref } from '@/components/site/zoneCta';
+import { LOGIN_PATH } from '@/lib/authEntry';
 
 // Shared "no access to this trip" screen. Rendered identically by TripView and
 // the structure editor (TripStructureEdit) whenever the trip can't be loaded
@@ -11,10 +13,13 @@ import { SystemStub } from '@/lib/PageNotFound';
 export default function TripAccessError({ onBack }) {
   const { t } = useI18n();
   const nav = useNavigate();
+  const zoneHref = useZoneHref();
   const { logout } = useAuth();
   const loginOther = async () => {
     try { await logout?.(false); } catch { /* ignore */ }
-    nav('/login');
+    // Адрес входа — через резолвер зоны, а не голым `/login` (TRIP-533; почему
+    // именно так — в докблоке `useZoneHref`).
+    nav(zoneHref(LOGIN_PATH));
   };
   const goBack = onBack || (() => nav('/trips'));
   return (
