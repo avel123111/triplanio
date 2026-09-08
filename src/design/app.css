@@ -8581,8 +8581,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    от неё, — а вот ДОГОНЯЮЩИЙ 320-мс транзишн превращает эту серию в дрожь: шит
    едет к позиции, которая уже устарела. Тем же приёмом снята дрожь на жесте
    (`.peek-sheet.is-dragging`): пока геометрию двигает не наша команда,
-   поверхность следует за ней, а не догоняет.
-   visual-diff-exempt: .peek-sheet transition — пока клавиатура едет, шит следует за видимой областью, а не догоняет её транзишном */
+   поверхность следует за ней, а не догоняет. */
 [data-keyboard] .peek-sheet { transition: none; }
 .peek-sheet {
   position: fixed; left: 0; right: 0; bottom: 0;
