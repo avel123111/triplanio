@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { SHEET_CONTROL_SELECTOR, gestureOwner, nearestDetent, resolveDetents, tapSettles } from '@/lib/sheetDetents';
+import { gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
@@ -225,14 +225,19 @@ export function PeekSheet({
     // внутри). Пропа `dock` не осталось: экран не обязан знать чужую высоту.
     setDockPx(Math.round(cssPx('var(--nav-dock-h, 0px)')));
     setFootPx(Math.round(footRef.current?.getBoundingClientRect().height || 0));
-    // ⚠️ ЧУЖАЯ КЛАВИАТУРА — НЕ НАШ ОРИЕНТИР, И ЭТО ВТОРАЯ ПОЛОВИНА ТОГО ЖЕ
-    // ПРАВИЛА. Детенты считаются долями от `vh`, поэтому одна усадка видимой
-    // области пересчитывает ВСЕ ступени и заодно `restY` — то есть шит меняет и
-    // высоту, и положение, даже не трогая детент. Под чужой шторкой он обязан
-    // стоять там, где стоял: держим последние ЕГО значения.
+    // ⚠️ КЛАВИАТУРА НЕ МЕНЯЕТ ГЕОМЕТРИЮ ПОВЕРХНОСТИ — ОНА ОБЪЯВЛЯЕТ РЕЗЕРВ.
+    // Детенты считаются долями от `vh`, поэтому КАЖДАЯ ступень выезда
+    // клавиатуры (их несколько, движок шлёт `visualViewport.resize` пачкой)
+    // пересчитывала ВСЕ ступени и заодно `restY`: шит менял и высоту, и
+    // положение, ни разу не сменив детент, а `transform` при этом ехал своим
+    // 320-мс транзишном — отсюда дрожь на каждом открытии клавиатуры. Правило
+    // тут ровно то же, что у полноэкранных поверхностей (TRIP-494): коробка
+    // остаётся прежней, а закрытую снизу полосу забирает отступ (`--kb-h` у
+    // футера, см. `.peek-sheet__foot`). Своя клавиатура вдобавок поднимает шит
+    // на верхний детент (`keyboardMine`) — это ОДИН переход, и он плавный.
     // Читаем DOM, а не состояние: `measure` навешан один раз и реактивных
     // значений не видит, а обе величины тут — свойства живого документа.
-    if (!(document.documentElement.hasAttribute('data-keyboard') && !isMine(sheetRef.current))) {
+    if (!document.documentElement.hasAttribute('data-keyboard')) {
       setVh(viewportH());
       setVTop(viewportTop());
     }
@@ -278,10 +283,6 @@ export function PeekSheet({
         // Тянуть шит можно за грип И за шапку (это его ручка) — откуда угодно
         // в них, включая кнопку: палец уже поехал, намерение однозначно.
         onHandle: !!(e.target.closest && e.target.closest('[data-peek-grip],[data-peek-head]')),
-        // А вот ТАП по кнопке принадлежит кнопке. Правило разведено в
-        // `tapSettles` — разбор там же.
-        onControl: !!(e.target.closest && e.target.closest(SHEET_CONTROL_SELECTOR)
-          && !e.target.closest('[data-peek-grip]')),
         mode: 'idle',
       };
     };
@@ -340,11 +341,12 @@ export function PeekSheet({
         // не обновится, и холст иначе остался бы там, куда его увёл палец.
         live.current.onHeightLive?.(st[next] ?? 0, 'end', live.current.capOf(st));
         if (next !== i) cb && cb(next);
-      } else if (d.mode === 'idle' && tapSettles(d)) {
-        e.preventDefault(); // глушим эмулированный клик и переключаем
-        const next = i >= st.length - 1 ? 0 : i + 1;
-        cb && cb(next);
       }
+      // ★ ТАП ПО ШАПКЕ ДЕТЕНТ БОЛЬШЕ НЕ МЕНЯЕТ. Шапка — не только ручка: шелл
+      // кладёт в неё управление шага (прогресс, сброс, вкладки), и промах мимо
+      // кнопки читался как «переключи детент» — шит прыгал на любой неточный
+      // тап. Тяга за шапку осталась (`onHandle` выше): жест однозначен, а тап —
+      // нет. Двигать шит по-прежнему можно тягой, стрелками и Enter на грипе.
     };
 
     el.addEventListener('touchstart', onStart, opts);

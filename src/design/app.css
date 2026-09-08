@@ -8573,7 +8573,14 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Панель действий шита — СНАРУЖИ скролла: она обязана быть на виду при любом
    положении списка. Поднята над нижним навом и домашней полоской. */
 /* Футер шита стоит НАД нижним навом: полосу называет сам нав. */
-.peek-sheet__foot { flex: none; padding-bottom: var(--nav-dock-h, 0px); }
+/* ★ РЕЗЕРВ ПОД КЛАВИАТУРОЙ — ОТСТУП ФУТЕРА, А НЕ ДРУГАЯ КОРОБКА ШИТА (TRIP-535).
+   Коробка шита от клавиатуры не меняется (разбор — `measure` в `PeekSheet`),
+   поэтому место для композера над клавиатурой даёт тот, кто стоит у дна:
+   футер. `max`, а не сумма: док и клавиатура не бывают одновременно — при
+   поднятой клавиатуре нижний нав скрыт (`data-keyboard`), — а сумма подняла бы
+   композер на высоту нава над клавиатурой.
+   visual-diff-exempt: .peek-sheet__foot padding-bottom — под клавиатурой футер поднимается на её высоту (`--kb-h`), док и клавиатура не складываются */
+.peek-sheet__foot { flex: none; padding-bottom: max(var(--nav-dock-h, 0px), var(--kb-h, 0px)); }
 .peek-sheet {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* Below the fixed bottom-nav dock (--z-nav) so the dock floats on top

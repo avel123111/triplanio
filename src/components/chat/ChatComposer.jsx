@@ -6,6 +6,7 @@ import { InputGroup } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { highlightMentions } from '@/lib/mention';
+import { useKeyboardOpen } from '@/lib/keyboardOpen';
 
 /**
  * The message composer — ONE implementation for the chat lens and the floating
@@ -74,14 +75,21 @@ const ChatComposer = forwardRef(
 
   useImperativeHandle(ref, () => ({ insertMention }));
 
+  // «Клавиатура сейчас поднята» — общий источник на всё приложение.
+  const keyboardOpen = useKeyboardOpen();
+
   const send = () => {
     const content = text.trim();
     if (!content || disabled) return;
     setText('');
     setShowMention(false);
-    // Keep the field focused so the mobile keyboard stays up for the next
-    // message instead of collapsing after every send.
-    taRef.current?.focus();
+    // ★ ОТПРАВКА ЗАКРЫВАЕТ КЛАВИАТУРУ, НО НЕ ЗАБИРАЕТ ФОКУС НА ДЕСКТОПЕ. Это
+    // одно действие с двумя исходами, и различает их не платформа, а ФАКТ:
+    // клавиатура сейчас поднята (общий источник `useKeyboardOpen`, тот же, по
+    // которому прячется нижний нав). Поднята — снимаем фокус, и она уезжает,
+    // открывая ответ бота; не поднята — оставляем, чтобы можно было писать
+    // дальше не целясь в поле мышью.
+    if (keyboardOpen) taRef.current?.blur(); else taRef.current?.focus();
     onSend(content);
   };
 

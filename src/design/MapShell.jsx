@@ -70,6 +70,7 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *   insetLeft?: number,
  *   overlayActive?: boolean,
  *   sideOpen?: boolean,
+ *   bodyKey?: string,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -142,6 +143,13 @@ export function MapShell({
   // позже закрытия. Влезает ли колонка — решает шелл (`useTwoColumns`), поэтому
   // экран объявляет НАМЕРЕНИЕ, а не раскладку.
   sideOpen = false,
+  // ЧТО СЕЙЧАС ЛЕЖИТ В ТЕЛЕ — именем от экрана (шаг флоу, вкладка). Шелл не
+  // знает, что такое «шаг», но он ВЛАДЕЕТ скроллером: новое содержимое обязано
+  // показываться с начала, а не с той позиции, где человек бросил предыдущее.
+  // Ключ, а не колбэк «прокрути меня»: экран объявляет ФАКТ смены, а решение
+  // «начать сверху» принадлежит поверхности — и одинаково на панели и в шите,
+  // потому что тело у них одно и то же (слот `panelBody`).
+  bodyKey,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -176,6 +184,13 @@ export function MapShell({
     if (!slotRefs.current[name]) slotRefs.current[name] = (el) => onSlotRef.current?.(name, el);
     return slotRefs.current[name];
   };
+  // Тело — тот же слот на обеих платформах (в шите его отдаёт `onBodyRef`),
+  // поэтому и ссылка одна: правило «новое содержимое начинается сверху» живёт в
+  // одном месте, а не по разу на платформу.
+  const bodyRef = useRef(/** @type {HTMLElement | null} */ (null));
+  const bodySlot = useCallback((/** @type {HTMLElement | null} */ el) => { bodyRef.current = el; onSlotRef.current?.('panelBody', el); }, []);
+  useLayoutEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [bodyKey]);
+
   // Слот статуса меряется здесь же — ссылка одна, стабильная (см. `slot`).
   const statusSlot = useCallback((/** @type {HTMLElement | null} */ el) => { statusRef.current = el; onSlotRef.current?.('status', el); }, []);
   const insetTopRef = useRef(insetTop);
@@ -339,7 +354,7 @@ export function MapShell({
           onDetentChange={onDetentChange}
           onHeightChange={applySheetPx}
           onHeightLive={onSheetLive}
-          onBodyRef={slot('panelBody')}
+          onBodyRef={bodySlot}
           header={head}
           footer={foot}
           label={panelLabel}
@@ -365,7 +380,7 @@ export function MapShell({
                 отдаёт содержимое, а не рисует себе карточку заново. */}
             <Card pad="none" radius="btn" raised className="mapshell__card">
               {head}
-              <div className="mapshell__body scrollbar-thin" ref={slot('panelBody')} />
+              <div className="mapshell__body scrollbar-thin" ref={bodySlot} />
               {foot}
             </Card>
           </aside>
