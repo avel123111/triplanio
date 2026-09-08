@@ -2,6 +2,7 @@
   "chip_balkans": "Balcanes en coche, 12 días",
   "chip_italy": "Italia, 10 días, septiembre",
   "chip_japan": "Japón, 14 días",
+  "draft_title": "Borrador de ruta",
   "end": "Fin",
   "end_badge": "Fin",
   "error_plan_title": "Error al planificar",
@@ -10,5 +11,6 @@
   "prompt_placeholder_refine": "Por ejemplo, 4 noches en Lisboa, Marsella en vez de Cannes…",
   "start": "Inicio",
   "start_badge": "Inicio",
-  "status_waiting": "Cuéntame adónde quieres ir, cuándo y por cuánto tiempo. Armaré la ruta ciudad por ciudad y la afinamos aquí, o simplemente pregúntame sobre el viaje."
+  "status_waiting": "Cuéntame adónde quieres ir, cuándo y por cuánto tiempo. Armaré la ruta ciudad por ciudad y la afinamos aquí, o simplemente pregúntame sobre el viaje.",
+  "tab_chat": "Chat"
 }

@@ -30,3 +30,34 @@ export function useIsPhone() {
   }, [q])
   return phone
 }
+
+/**
+ * ВТОРАЯ КОЛОНКА — ДРУГОЙ ВОПРОС, А НЕ ВТОРАЯ ГРАНИЦА РАСКЛАДКИ (TRIP-535).
+ *
+ * `PHONE_MAX_W` отвечает «панель уезжает в шит»; здесь спрашивают другое —
+ * «помещается ли РЯДОМ с панелью вторая колонка так, чтобы карте осталась
+ * работающая площадь». Панель `clamp(540px, 46vw, 620px)` плюс колонка 340
+ * оставляют карте на 1280 около 350 px — это и есть нижняя граница, при которой
+ * карта ещё карта, а не полоска.
+ *
+ * ★ ВЕЛИЧИНА ЖИВЁТ ТОЛЬКО ЗДЕСЬ. У неё нет CSS-двойника: медиазапроса на
+ * `--mapshell-aside-w` в таблице стилей нет, колонку просто НЕ РИСУЮТ. Иначе
+ * повторился бы разлом TRIP-349 — два числа на один вопрос и химера между ними.
+ */
+export const TWO_COL_MIN_W = 1280
+
+/** Помещается ли вторая колонка рядом с панелью (десктоп достаточной ширины). */
+export function useTwoColumns() {
+  const q = `(min-width: ${TWO_COL_MIN_W}px)`
+  const [wide, setWide] = React.useState(
+    () => typeof window !== "undefined" && window.matchMedia(q).matches,
+  )
+  React.useEffect(() => {
+    const mql = window.matchMedia(q)
+    const onChange = () => setWide(mql.matches)
+    mql.addEventListener("change", onChange)
+    onChange()
+    return () => mql.removeEventListener("change", onChange)
+  }, [q])
+  return wide
+}

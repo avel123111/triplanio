@@ -4,7 +4,7 @@ import { Card } from './index.jsx';
 import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
-import { useIsPhone } from '@/hooks/use-mobile';
+import { useIsPhone, useTwoColumns } from '@/hooks/use-mobile';
 import { mapShellInsets } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 
@@ -69,6 +69,7 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *   insetTop?: number,
  *   insetLeft?: number,
  *   overlayActive?: boolean,
+ *   sideOpen?: boolean,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -95,6 +96,14 @@ export function MapShell({
   //   panelBody    — скроллящееся тело панели.
   //   panelFoot    — панель действий (кнопки шага): на виду при любом скролле
   //                  тела, поэтому слот отдельный, а не «последний ребёнок».
+  //   sideHead /   — ВТОРАЯ КОЛОНКА: она выглядывает ИЗ-ПОД панели (слой ниже,
+  //   sideBody       заезд под неё на радиус) и уступает ей по высоте, поэтому
+  //                  читается приложенной сбоку, а не второй панелью. Живёт,
+  //                  только пока экран просит (`sideOpen`) И она помещается
+  //                  (`useTwoColumns`). Шапка отдельным слотом по той же
+  //                  причине, что у панели: воздух вокруг неё — свойство
+  //                  коробки шелла, и экран, повторяющий его у себя,
+  //                  разъезжается с ней на первой правке.
   //   panelOverlay — слой ПОВЕРХ панели во всю её высоту (ящик города/события у
   //                  редактора). Закрывает ровно панель и не трогает карту — по
   //                  ней в этот момент продолжают кликать. Соседствует с
@@ -127,6 +136,12 @@ export function MapShell({
   // уже после окна focus-driven — и обрывал бы летящий `calmFit`. Экран отдаёт
   // сюда факт открытости (сразу), а не присутствие узла.
   overlayActive = false,
+  // ЭКРАНУ ЕСТЬ ЧТО ПОКАЗАТЬ ВО ВТОРОЙ КОЛОНКЕ (черновик маршрута у визарда).
+  // Факт от экрана, а не присутствие узла в слоте: у соседнего `overlayActive`
+  // ровно та же причина — узел живёт дольше факта, и камера узнавала бы правду
+  // позже закрытия. Влезает ли колонка — решает шелл (`useTwoColumns`), поэтому
+  // экран объявляет НАМЕРЕНИЕ, а не раскладку.
+  sideOpen = false,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -137,8 +152,14 @@ export function MapShell({
   className = '',
 }) {
   const isPhone = useIsPhone();
+  // Вторая колонка существует, только если ЭКРАН её просит и она ПОМЕЩАЕТСЯ.
+  // Ниже порога слот не создаётся вовсе — экран сам увидит это тем же хуком и
+  // покажет черновик вкладкой, как на телефоне (один запасной путь, не два).
+  const twoCols = useTwoColumns();
+  const sideOn = !isPhone && twoCols && sideOpen;
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
+  const asideRef = useRef(/** @type {HTMLElement | null} */ (null));
   const statusRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
   const [capPx, setCapPx] = useState(0);
@@ -169,11 +190,11 @@ export function MapShell({
   // это отдаётся коробками `null` в `view` — она ничего не трогает; замер приезжает
   // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
   // ставится без движения.
-  const [panelW, setPanelW] = useState(/** @type {number | null} */ (null));
-  // Правый край панели от края холста = полоса хоста слева + ширина панели.
-  // Левее панели закрыто НЕ панелью (рейл трипа над холстом), и это остаётся
-  // закрытым, когда панель свёрнута (`offsetPx`).
-  const panelPx = panelW === null ? null : insetLeft + panelW;
+  const [panelW, setPanelW] = useState(/** @type {number | null} */ (null));   // правый край колонок
+  // Правый край КОЛОНОК от края холста — уже вместе с полосой хоста слева (см.
+  // `measureCols`). Левее панели закрыто НЕ панелью (рейл трипа над холстом), и
+  // это остаётся закрытым, когда панель свёрнута (`offsetPx`).
+  const panelPx = panelW;
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -201,19 +222,30 @@ export function MapShell({
     root.style.setProperty('--mapshell-attrib', `${shift + ATTRIB_AIR}px`);
   }, []);
 
-  const measurePanel = useCallback(() => {
-    const el = panelRef.current;
-    setPanelW(el ? Math.max(0, Math.round(el.getBoundingClientRect().width)) : 0);
+  // ★ МЕРИМ ПРАВЫЙ КРАЙ САМОЙ ПРАВОЙ КОЛОНКИ, А НЕ СУММУ ШИРИН. Колонок стало
+  // две, и вторая ЗАЕЗЖАЕТ под первую на радиус (она выглядывает из-под неё) —
+  // сумма ширин посчитала бы нахлёст дважды. Правый край считается в
+  // координатах РАСКЛАДКИ (`offsetLeft + offsetWidth`, offsetParent = сам
+  // шелл): свёрнутая панель уезжает `transform`-ом, а он на них не влияет —
+  // `getBoundingClientRect().right` уехал бы вместе с ней и отдал бы карте
+  // ложную полосу на все 320 мс анимации. Полоса хоста слева (рейл) входит сюда
+  // сама: панель стоит на `left: var(--mapshell-inset-left)`.
+  const measureCols = useCallback(() => {
+    const right = (/** @type {HTMLElement | null} */ el) => (el ? el.offsetLeft + el.offsetWidth : 0);
+    setPanelW(Math.max(0, Math.round(Math.max(right(panelRef.current), right(asideRef.current)))));
   }, []);
 
   useLayoutEffect(() => {
     if (isPhone) { setPanelW(0); return undefined; }
-    measurePanel();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measurePanel) : null;
+    measureCols();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measureCols) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);
-    window.addEventListener('resize', measurePanel);
-    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measurePanel); };
-  }, [isPhone, measurePanel]);
+    if (ro && asideRef.current) ro.observe(asideRef.current);
+    window.addEventListener('resize', measureCols);
+    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measureCols); };
+    // `sideOn` в зависимостях: появление и уход колонки меняют правый край, а
+    // ResizeObserver на несуществующем узле ничего не скажет.
+  }, [isPhone, sideOn, measureCols]);
 
   // Полоса статуса: ноль, пока слот пуст (пилюли нет, ноль ночей).
   useLayoutEffect(() => {
@@ -354,6 +386,22 @@ export function MapShell({
                 />
               </Tooltip>
             </div>
+          )}
+          {/* ★ ЧЕРНОВИК ВЫГЛЯДЫВАЕТ ИЗ-ПОД ПАНЕЛИ — ЭТО ПОРЯДОК СЛОЁВ, А НЕ РИСУНОК.
+              Колонка лежит НИЖЕ панели (`z-index`, см. CSS) и заезжает под неё
+              на радиус, поэтому её левый край и тень уходят под панель
+              по-настоящему; карточке остаётся снять то, чего у спрятанной
+              стороны быть не может, — левую границу и левые скругления.
+              Соседствует с панелью, а не лежит в ней: у панели своя высота,
+              свой скролл и своё сворачивание (у линзы), и колонка не обязана
+              их наследовать. */}
+          {sideOn && (
+            <aside className="mapshell__aside" ref={asideRef}>
+              <Card pad="none" radius="btn" raised className="mapshell__card">
+                <div className="mapshell__head" ref={slot('sideHead')} />
+                <div className="mapshell__body scrollbar-thin" ref={slot('sideBody')} />
+              </Card>
+            </aside>
           )}
           {/* Слой города/события — НЕЗАВИСИМ от колонки панели (TRIP-195 доводка):
               он сосед `.mapshell__panel`, а не её потомок, поэтому сворачивание

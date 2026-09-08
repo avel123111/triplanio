@@ -77,6 +77,7 @@ import { createPortal } from 'react-dom';
  *   collapseLabel?: string,
  *   expandLabel?: string,
  *   overlayActive?: boolean,
+ *   sideOpen?: boolean,
  * }} SurfaceConfig
  */
 
@@ -84,7 +85,7 @@ import { createPortal } from 'react-dom';
 // публикации. Объект фактов у экрана новый на каждый рендер, а публиковать надо
 // на смену ЗНАЧЕНИЙ.
 const FACT_KEYS = /** @type {const} */ (['mode', 'tripId', 'addons', 'section', 'step', 'isPro', 'proResolved', 'title', 'meta', 'loading', 'backTitle']);
-const SURFACE_KEYS = /** @type {const} */ (['panelLabel', 'detents', 'detent', 'onDetentChange', 'collapsed', 'onCollapsedChange', 'collapseLabel', 'expandLabel', 'overlayActive']);
+const SURFACE_KEYS = /** @type {const} */ (['panelLabel', 'detents', 'detent', 'onDetentChange', 'collapsed', 'onCollapsedChange', 'collapseLabel', 'expandLabel', 'overlayActive', 'sideOpen']);
 
 /** Минимальный внешний стор под `useSyncExternalStore`. */
 export function createStore(initial) {
