@@ -47,6 +47,12 @@ const NON_TEXT_INPUT_TYPES = new Set(['button', 'submit', 'reset', 'checkbox', '
 let open = false;
 const subscribers = new Set();
 
+// ★ ЭКСПОРТ (TRIP-535): предикат нужен ВТОРОМУ читателю — поверхности, которая
+// решает «клавиатура моя» по владению фокусом. Ей мало «фокус в моём поддереве»:
+// кнопка и грип фокус тоже получают (Chrome фокусирует их по тапу), а клавиатуру
+// не держат — и шит залипал бы на верхнем детенте от тапа по собственной броске.
+// Один факт, два читателя; вторая такая же проверка у читателя разъехалась бы с
+// этой молча (тот же приём, что у `hasSoftKeyboard`).
 // Клавиатуру физически можно поднять ТОЛЬКО над текстовым вводом (input
 // текстовых типов / textarea / contenteditable). select, чекбоксы, кнопки,
 // color/file/range её не поднимают. Это добавочный гейт к геометрии: без него
@@ -55,7 +61,7 @@ const subscribers = new Set();
 // боттом-нав до перезагрузки. Фокус здесь НЕ замена геометрии (та racy сама по
 // себе — тап по наву возвращал фокус в поле), а ДОПОЛНИТЕЛЬНОЕ условие: при тапе
 // по кнопке геометрия не двигается, поэтому старый race не воскресает.
-function isTextInputFocused() {
+export function isTextInputFocused() {
   if (typeof document === 'undefined') return false;
   const el = document.activeElement;
   if (!(el instanceof HTMLElement)) return false;

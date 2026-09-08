@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { gestureOwner, nearestDetent, resolveDetents } from '@/lib/sheetDetents';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 import { cssPx } from '@/lib/cssPx';
-import { hasSoftKeyboard } from '@/lib/keyboardOpen';
+import { hasSoftKeyboard, isTextInputFocused } from '@/lib/keyboardOpen';
 
 /**
  * PeekSheet — НЕМОДАЛЬНЫЙ постоянный боттом-шит с ДЕТЕНТАМИ: он всегда на
@@ -86,13 +86,27 @@ function viewportTop() {
   return Math.round(window.visualViewport?.offsetTop || 0);
 }
 
-/** Клавиатуру поднимает СФОКУСИРОВАННОЕ поле — значит «чья клавиатура» это
- *  вопрос о том, чей это узел. Поверхности, лежащие поверх (шторка пикера), живут
- *  в портале `document.body`, и `contains` честно отвечает «не моё». */
+/**
+ * ДЕРЖИТ ЛИ ЭТОТ УЗЕЛ КЛАВИАТУРУ: в нём сфокусировано ТЕКСТОВОЕ поле.
+ *
+ * Два условия, и оба несущие. «Мой узел» — потому что поверхности, лежащие
+ * поверх (шторка пикера), живут в портале `document.body`, и `contains` честно
+ * отвечает «не моё». «Текстовое» — потому что фокус получают и кнопка, и грип
+ * (`role="slider"`, `tabIndex=0`), а клавиатуру они не поднимают: без этой
+ * половины тап по собственной брови читался бы как «клавиатура всё ещё моя», и
+ * шит залипал бы на верхнем детенте с уже убранной клавиатурой. Предикат
+ * текстового ввода — один на приложение, живёт в `lib/keyboardOpen.js`.
+ */
 function isMine(node) {
   if (!node || typeof document === 'undefined') return false;
+  if (!isTextInputFocused()) return false;
   const el = document.activeElement;
-  return !!el && el !== document.body && node.contains(el);
+  return !!el && node.contains(el);
+}
+
+/** Факт «клавиатура сейчас поднята», как его объявляет `lib/keyboardOpen.js`. */
+function kbUp() {
+  return typeof document !== 'undefined' && document.documentElement.hasAttribute('data-keyboard');
 }
 
 /**
@@ -202,9 +216,14 @@ export function PeekSheet({
   // верхний детент даёт `restY = vh − vh = 0` при любой высоте. У состояния
   // «детент» цель от `vh` зависит. Значит переключаться надо тогда, когда цель
   // уже неподвижна, а это ровно КРАЯ движения клавиатуры, а не его середина:
-  //   ВКЛ  — по фокусу, ДО того как клавиатура тронулась (веб-аналог
-  //          `keyboardWillShow`: он тоже приходит до движения);
-  //   ВЫКЛ — по тишине во `visualViewport`, ПОСЛЕ того как она доехала.
+  //   ВКЛ  — по фокусу в своём поле, ДО того как клавиатура тронулась
+  //          (веб-аналог `keyboardWillShow`: он тоже приходит до движения);
+  //   ВЫКЛ — в ТИШИНЕ вьюпорта, то есть ПОСЛЕ того как она доехала: и уход
+  //          фокуса, и движение вьюпорта лишь НАЗНАЧАЮТ срок и переносят его
+  //          дальше, а решение читает обе величины уже окончательными. Причин
+  //          закрыть окно две, и вторая не про фокус: клавиатуру гасят и БЕЗ
+  //          blur (системная «назад» на Android), поэтому в тишине спрашивается
+  //          ещё и сам факт «клавиатура поднята».
   // Окно накрывает всю анимацию целиком: внутри `--sheet-y` неподвижен, снаружи
   // вьюпорт в покое. Ни один переход не может быть перенацелен — по построению.
   // За окно шит делает РОВНО ДВА хода на цикл клавиатуры, оба к неподвижной
@@ -218,33 +237,51 @@ export function PeekSheet({
   useEffect(() => {
     if (!hasSoftKeyboard()) return undefined;
     let settle = 0;
-    const stop = () => { if (settle) { clearTimeout(settle); settle = 0; } };
-    // Отпускание ОТЛОЖЕНО и переносится каждым движением вьюпорта: пока
-    // клавиатура едет вниз, отпускать нельзя — цель детента считается от `vh`.
-    const release = () => {
+    // Поднималась ли клавиатура в этом окне. Без этого признака пауза ПОСРЕДИ её
+    // выезда (движок волен прислать всего два события) читалась бы как «её нет»,
+    // и окно схлопнулось бы на подъёме — та же дрожь, только с другого конца.
+    let wasUp = false;
+    const stop = () => { clearTimeout(settle); settle = 0; };
+    // ★ РЕШЕНИЕ ПРИНИМАЕТСЯ В ТИШИНЕ, А НЕ В МОМЕНТ СОБЫТИЯ. Любая причина
+    // (ушёл фокус, поехал вьюпорт) лишь НАЗНАЧАЕТ срок и переносит его дальше;
+    // когда всё остановилось, обе величины читаются уже окончательными — это и
+    // есть «край движения, а не его середина».
+    const settleSoon = () => {
       stop();
       settle = setTimeout(() => {
         settle = 0;
-        if (!isMine(sheetRef.current)) setKeyboardMine(false);
+        if (!isMine(sheetRef.current)) { wasUp = false; setKeyboardMine(false); return; }
+        // Поле держит фокус, но клавиатуру могли убрать И БЕЗ blur: системная
+        // «назад» на Android и кнопка «спрятать клавиатуру» гасят её, не снимая
+        // фокус. Тогда `focusout` не придёт вовсе, и без этой ветки окно не
+        // закрылось бы НИКОГДА — шит остался бы во весь экран, причём опустить
+        // его нельзя (жест доезжает до `onDetentChange`, но `index` игнорирует
+        // детент, пока окно открыто).
+        if (wasUp && !kbUp()) { wasUp = false; setKeyboardMine(false); }
       }, KB_SETTLE_MS);
     };
     // `focusin` приходит на КАЖДОЕ получение фокуса, в том числе при переезде
     // из поля шторки в поле этого шита — а там клавиатура не опускается вовсе,
     // и никакого другого события бы не было.
-    const onFocusIn = () => { if (isMine(sheetRef.current)) { stop(); setKeyboardMine(true); } };
-    // `focusout` приходит РАНЬШЕ, чем встал новый фокус (`activeElement` в этот
-    // момент — `body`), поэтому решение отложено: к сроку фокус уже на месте.
-    const onFocusOut = () => release();
-    const onViewport = () => { if (settle) release(); };
+    const onFocusIn = () => {
+      if (!isMine(sheetRef.current)) return;
+      stop();
+      wasUp = kbUp();
+      setKeyboardMine(true);
+    };
+    const onViewport = () => { if (kbUp()) wasUp = true; settleSoon(); };
     document.addEventListener('focusin', onFocusIn);
-    document.addEventListener('focusout', onFocusOut);
+    // `focusout` приходит РАНЬШЕ, чем встал новый фокус (`activeElement` в этот
+    // момент — `body`), поэтому он не решает, а только назначает срок: к нему
+    // фокус уже на месте, и решение спрашивает про него ещё раз.
+    document.addEventListener('focusout', settleSoon);
     const vv = window.visualViewport;
     vv?.addEventListener('resize', onViewport);
-    onFocusIn();
+    onFocusIn(); // начальный снимок: фокус мог уже стоять в поле шита
     return () => {
       stop();
       document.removeEventListener('focusin', onFocusIn);
-      document.removeEventListener('focusout', onFocusOut);
+      document.removeEventListener('focusout', settleSoon);
       vv?.removeEventListener('resize', onViewport);
     };
   }, []);
