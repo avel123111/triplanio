@@ -265,6 +265,13 @@
      floor-exempt: tokens +1 — ширина виджета поднята из .mapshell в :root, чтобы её видел и evd-drawer вне .mapshell (эксперимент «панель = виджет»), апрув Pavel
      visual-diff-exempt: :root --mapshell-panel-w — токен переехал с .mapshell в :root (то же значение, снятие с .mapshell объявлено там же) */
   --mapshell-panel-w: clamp(540px, 46vw, 620px);
+  /* Ширина ВТОРОЙ колонки шелла (черновик маршрута у визарда, TRIP-535). Рядом
+     с шириной панели, а не в её карьере: у пары одна арифметика — сколько на
+     пороге двух колонок остаётся карте. Сам порог и его расчёт живут в ОДНОМ
+     месте — `TWO_COL_MIN_W` (`hooks/use-mobile.jsx`), здесь только ширина.
+     floor-exempt: tokens +1 — ширина второй колонки шелла, апрув Pavel (TRIP-535)
+     visual-diff-exempt: :root --mapshell-aside-w — новый токен ширины второй колонки */
+  --mapshell-aside-w: clamp(300px, 24vw, 360px);
 
   /* Рейл трипа — ИНВЕРСНАЯ поверхность: тёмный борт в ОБЕИХ темах. Своя пара
      фон/чернила нужна именно поэтому: глобальные --ink/--wash/--line подобраны
@@ -4523,7 +4530,13 @@ button.input[data-empty] { color: var(--muted-2); }
 /* Линии под шапкой нет: прогресс-полоса сама по себе граница шага, а вторая
    черта под ней делит панель дважды подряд.
    visual-diff-exempt: .flow-lp-h border-bottom — вторая черта под прогресс-полосой */
-.flow-lp-h { flex: none; display: flex; align-items: flex-start; gap: var(--sp-6); }
+/* Шапка шага — КОЛОНКА: первый ряд «прогресс + сброс» (его собирает примитив
+   `.row` в разметке), второй — вкладки во всю ширину (TRIP-535). Прежнее
+   `align-items: flex-start` было свойством РЯДА и уехало вместе с ним в `.row`;
+   в колонке оно, наоборот, мешало бы вкладкам растянуться.
+   visual-diff-exempt: .flow-lp-h flex-direction — шапка стала колонкой: под прогрессом встают вкладки черновика
+   visual-diff-exempt: .flow-lp-h align-items — свойство ряда уехало в примитив `.row` вместе с самим рядом */
+.flow-lp-h { flex: none; display: flex; flex-direction: column; gap: var(--sp-6); }
 /* Футер флоу — тот же фон приложения, что и шапка. Раньше правило было scoped к
    `.flow-editcol` (колонка удалена вместе с раскладкой); теперь оно висит на
    СВОЁМ классе футера, а общий `.lp-f` (event-панели/диалоги/LpSheet) остаётся
@@ -4807,10 +4820,11 @@ button.input[data-empty] { color: var(--muted-2); }
    секции внутри ПЛОСКИЕ и разделены бордюрами — hero клипуется к радиусу карточки,
    `.statbar` и маршрут больше НЕ несут своих скруглений (был «радиус в радиусе»
    внутри flush-родителя). Пространство `pl` уже существует (`.pl-revrow`). */
-/* The itinerary list inside an AI chat reply — a small gap off the reply text. */
-.pl-ai-draft { margin-top: var(--sp-5); }
-/* Ряды маршрута под лентой ИИ: между рядами волосяная линия и воздух, чтобы
-   двухстрочный ряд читался как один (внутри строки прижаты, см. PanelAi).
+/* Список черновика. Отступа сверху у него больше НЕТ: он не стоит под репликой
+   бота (TRIP-535) — его подпирает своя поверхность, а воздух даёт она.
+   visual-diff-exempt: .pl-ai-draft margin-top — черновик ушёл из ленты в свою поверхность, зазор от реплики не нужен */
+/* Ряды черновика маршрута: между рядами волосяная линия и воздух, чтобы
+   двухстрочный ряд читался как один (внутри строки прижаты, см. `DraftItinerary`).
    visual-diff-exempt: .pl-ai-draft > * + * border-top — разделитель рядов маршрута под лентой
    visual-diff-exempt: .pl-ai-draft > * + * padding-top — воздух над рядом после разделителя */
 .pl-ai-draft > * + * { border-top: 1px solid var(--line); padding-top: var(--sp-3); }
@@ -5037,6 +5051,57 @@ button.input[data-empty] { color: var(--muted-2); }
    холста: без полосы он вставал от края холста и уходил под рейл.
    visual-diff-exempt: .mapshell__overlay left — слой встаёт правее рейла вместе с панелью (полоса хоста + воздух)
    visual-diff-exempt: .mapshell__overlay transition — левый край едет за панелью тем же темпом */
+/* ── Вторая колонка шелла (TRIP-535) ────────────────────────────────────────
+   ★ «ВЫГЛЯДЫВАЕТ ИЗ-ПОД ПАНЕЛИ» — ЭТО ПОРЯДОК СЛОЁВ, А НЕ РИСУНОК УГЛОВ.
+   Колонка лежит НИЖЕ панели (`z-index: 1` против её 2) и заезжает под неё ровно
+   на радиус: `left` уходит влево на `--r-btn`, ширина на столько же прибавляет,
+   поэтому ПРАВЫЙ край остаётся там, где ему положено, а срезанные левые углы
+   прячутся под панелью — щели не бывает и на дробном пикселе. По высоте колонка
+   УСТУПАЕТ панели (свой, больший воздух сверху и снизу): равная высота читалась
+   бы второй панелью, а не приложенным к ней черновиком. Уровень объявлен явно —
+   контракт слоёв TRIP-466: сосед у панели по стековому контексту шелла.
+   floor-exempt: classes +1 — `.mapshell__aside`: коробка второй колонки шелла, апрув Pavel (TRIP-535)
+   floor-exempt: layout +1 — тот же класс в счёте приватной раскладки: это коробка ШЕЛЛА, а не экрана, апрув Pavel (TRIP-535)
+   visual-diff-exempt: .mapshell__aside position — коробка второй колонки
+   visual-diff-exempt: .mapshell__aside top — колонка уступает панели по высоте (её воздух втрое больше)
+   visual-diff-exempt: .mapshell__aside bottom — то же
+   visual-diff-exempt: .mapshell__aside left — заезд под панель на радиус
+   visual-diff-exempt: .mapshell__aside width — ширина колонки плюс тот же заезд
+   visual-diff-exempt: .mapshell__aside display — карточка заполняет коробку
+   visual-diff-exempt: .mapshell__aside z-index — слой НИЖЕ панели: она из-под неё и выглядывает
+   visual-diff-exempt: .mapshell__aside transition — левый край едет за панелью тем же темпом
+   visual-diff-exempt: .mapshell__card border-left — у спрятанной под панелью стороны границы быть не может
+   visual-diff-exempt: .mapshell__card border-start-start-radius — то же про левые скругления
+   visual-diff-exempt: .mapshell__card border-end-start-radius — то же */
+.mapshell__aside {
+  /* НАСКОЛЬКО КОЛОНКА ЗАЕЗЖАЕТ ПОД ПАНЕЛЬ — одно число, и его читают все, кому
+     заезд важен: и геометрия коробки, и отступы содержимого ниже. Врозь они
+     разъезжаются молча — ровно это и случилось: заезд съел левый отступ, и
+     текст встал в 6 px от видимой кромки вместо 16. */
+  --tuck: var(--r-btn);
+  position: absolute; top: calc(var(--sp-7) * 3); bottom: calc(var(--sp-7) * 3);
+  left: calc(var(--mapshell-inset-left, 0px) + var(--mapshell-panel-w) - var(--tuck));
+  width: calc(var(--mapshell-aside-w) + var(--tuck));
+  display: flex; z-index: 1;
+  transition: left var(--surface-settle, .32s) var(--surface-ease, ease);
+}
+.mapshell__aside > .mapshell__card { border-left: 0; border-start-start-radius: 0; border-end-start-radius: 0; }
+/* ВОЗДУХ ВОКРУГ СОДЕРЖИМОГО КОЛОНКИ ДАЁТ ШЕЛЛ — по той же причине, по которой
+   он даёт его шапке (`.mapshell__head`): у колонки нет экранной обёртки вроде
+   `.flow-lp-b`, которая держит его у панели, и каждый следующий жилец
+   изобретал бы отступы заново. У самой панели правило ничего не меняет —
+   селектор скоупнут на колонку.
+   visual-diff-exempt: .mapshell__body padding — воздух вокруг содержимого ВТОРОЙ колонки (правило скоупнуто на неё; у панели воздух по-прежнему от экрана)
+   visual-diff-exempt: .mapshell__head padding-left — то же для шапки колонки: отступ считается от ВИДИМОЙ кромки
+   visual-diff-exempt: .mapshell__body padding-left — то же для тела колонки */
+.mapshell__aside .mapshell__body { padding: var(--sp-6) var(--sp-7); }
+/* ★ ОТСТУП СЧИТАЕТСЯ ОТ ВИДИМОЙ КРОМКИ, А НЕ ОТ КРАЯ КОРОБКИ. Слева у колонки
+   спрятано под панелью ровно `--tuck`, поэтому честные 16 px превращались бы в
+   6 — и текст упирался бы в шов. Компенсация живёт рядом с самим заездом и
+   читает то же число. */
+.mapshell__aside .mapshell__head,
+.mapshell__aside .mapshell__body { padding-left: calc(var(--sp-7) + var(--tuck)); }
+
 .mapshell__overlay {
   position: absolute; top: var(--sp-7); bottom: var(--sp-7);
   left: calc(var(--mapshell-inset-left, 0px) + var(--sp-7)); width: calc(var(--mapshell-panel-w) - var(--sp-7));
@@ -8543,7 +8608,19 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    внутри неё, а не уезжает под нижний край экрана. Во время жеста высота НЕ
    пересчитывается (`--sheet-h` фиксируется на осадке): иначе каждый кадр драга
    стоил бы перекладку всего списка. */
-.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px) - var(--sheet-reserve, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+/* ★★ МЕСТО ПОД КЛАВИАТУРУ ЗАБИРАЕТ ТЕЛО, И ЭТО ЕДИНСТВЕННОЕ, ЧТО ОНА МЕНЯЕТ
+   (TRIP-535). Коробка, детенты и положение шита от клавиатуры не зависят вовсе
+   (высота считается от РАСКЛАДОЧНОГО вьюпорта, разбор у `viewportH` в
+   `PeekSheet`), поэтому композер поднимает над ней не арифметика, а вычет у
+   скроллера: тело короче на `--kb-h`, футер ровно на столько же выше.
+   ⚠️ ИМЕННО У ТЕЛА, А НЕ У ФУТЕРА. Высота футера ИЗМЕРЯЕТСЯ (`footPx`) и через
+   `reservePx → minPx` возвращается в детенты — то есть в геометрию его же
+   контейнера. Отступ под клавиатуру там давал петлю обратной связи: пол детентов
+   поднимался на её высоту (замер 293 → 521), тело схлопывалось в ноль, а
+   композер уезжал ПОД клавиатуру. У тела петли нет: его высота ВЫВОДИТСЯ из
+   `--sheet-h`, а не измеряется.
+   visual-diff-exempt: .peek-sheet__body height — тело короче на высоту клавиатуры: место под неё даёт скроллер, а не пересчёт коробки */
+.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px) - var(--sheet-reserve, 0px) - var(--kb-h, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).

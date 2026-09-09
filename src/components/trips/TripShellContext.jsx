@@ -77,6 +77,8 @@ import { createPortal } from 'react-dom';
  *   collapseLabel?: string,
  *   expandLabel?: string,
  *   overlayActive?: boolean,
+ *   sideOpen?: boolean,
+ *   bodyKey?: string,
  * }} SurfaceConfig
  */
 
@@ -84,7 +86,7 @@ import { createPortal } from 'react-dom';
 // публикации. Объект фактов у экрана новый на каждый рендер, а публиковать надо
 // на смену ЗНАЧЕНИЙ.
 const FACT_KEYS = /** @type {const} */ (['mode', 'tripId', 'addons', 'section', 'step', 'isPro', 'proResolved', 'title', 'meta', 'loading', 'backTitle']);
-const SURFACE_KEYS = /** @type {const} */ (['panelLabel', 'detents', 'detent', 'onDetentChange', 'collapsed', 'onCollapsedChange', 'collapseLabel', 'expandLabel', 'overlayActive']);
+const SURFACE_KEYS = /** @type {const} */ (['panelLabel', 'detents', 'detent', 'onDetentChange', 'collapsed', 'onCollapsedChange', 'collapseLabel', 'expandLabel', 'overlayActive', 'sideOpen', 'bodyKey']);
 
 /** Минимальный внешний стор под `useSyncExternalStore`. */
 export function createStore(initial) {
@@ -176,6 +178,7 @@ export function useShellMapProps() {
  * мутации, стор оповещает слот синхронно, до отрисовки).
  *
  * Имена слотов: `panelHead` · `panelBody` · `panelFoot` · `panelOverlay` ·
+ * `sideHead`/`sideBody` (вторая колонка шелла, живёт только под `sideOpen`) ·
  * `status` (полоса статуса над низом карты) · `mapOverlay` (плавающие контролы
  * над картой) · `content` (ящик у `.trip-content`) · `shell` (оверлеи у
  * `.trip-shell`). Скроллер тела секции — не слот, а реф `host.mainRef`.

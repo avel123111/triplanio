@@ -2,6 +2,7 @@
   "chip_balkans": "Balkans road trip, 12 days",
   "chip_italy": "Italy, 10 days, September",
   "chip_japan": "Japan, 14 days",
+  "draft_title": "Route draft",
   "end": "End",
   "end_badge": "Finish",
   "error_plan_title": "Planning failed",
@@ -10,5 +11,6 @@
   "prompt_placeholder_refine": "E.g., 4 nights in Lisbon, Marseille instead of Cannes…",
   "start": "Start",
   "start_badge": "Start",
-  "status_waiting": "Tell me where you want to go, when and for how long. I'll build the route city by city and we'll tune it here — or just ask me about the trip."
+  "status_waiting": "Tell me where you want to go, when and for how long. I'll build the route city by city and we'll tune it here — or just ask me about the trip.",
+  "tab_chat": "Chat"
 }

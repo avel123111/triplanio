@@ -16,7 +16,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, nearbyCities } from '@/lib/geo';
 import { haversineKm } from '@/lib/trip-stats';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, Country, EditableText, EmptyState, IconBtn, Severity, Tile, useToast } from '../design/index';
+import { Badge, Btn, Card, Col, Country, EditableText, EmptyState, IconBtn, Row, Seg, Severity, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -29,7 +29,9 @@ import { ShellSlot, useShellFacts, useShellSurface } from '@/components/trips/Tr
 import { sameCity } from '@/lib/validation';
 import { cityUnderPin } from '@/lib/map/markers';
 import PanelAi from '@/pages/create/PanelAi';
+import DraftItinerary from '@/pages/create/DraftItinerary';
 import ChatComposer from '@/components/chat/ChatComposer';
+import { useTwoColumns } from '@/hooks/use-mobile';
 import { CityAnchorRow } from '@/pages/create/anchors';
 import CityAdder from '@/components/cities/CityAdder';
 import CityPicker from '@/components/cities/CityPicker';
@@ -780,10 +782,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const qc = useQueryClient();
   const confirm = useConfirm();
 
-  // Детент шита и свёрнутость панели — состояние ЭКРАНА, а не шелла: шаг может
-  // осознанно опустить шит (например, когда просит выбрать город на карте).
+  // Детент шита — состояние ЭКРАНА, а не шелла: шаг может осознанно опустить
+  // шит (например, когда просит выбрать город на карте).
   const [detent, setDetent] = useState(1);
-  const [collapsed, setCollapsed] = useState(false);
 
   const isPro = isProActive(user);
   const { isDark } = useTheme();
@@ -871,6 +872,29 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [sp, setSearchParams] = useSearchParams();
   const location = useLocation();
   const step = normalizeStep(sp.get('step'), { citiesValid });
+
+  // ── ЧЕРНОВИК МАРШРУТА: ОДНА ВЕЩЬ, ДВЕ ОБОЛОЧКИ (TRIP-535) ────────────────
+  // «Идёт разговор с ботом» назван ОДИН раз: его читают вкладки, вторая колонка,
+  // сброс в шапке и композер в футере — иначе четыре копии одного предиката
+  // разъедутся на первой же правке условия.
+  const aiStep = isAi && step === 'home' && !savedOk;
+  // Предикат «черновик есть» ОДИН на обе оболочки: им же экран просит у шелла
+  // вторую колонку, им же включается вкладка. Двух ответов на «показывать ли
+  // черновик» не бывает по построению. Имя не `hasDraft*`: соседний
+  // `hasDraftData` отвечает на другой вопрос — «есть что терять при сбросе».
+  const draftReady = aiStep && cities.length > 0;
+  // Помещается ли колонка — величина шелла, и хук у неё тот же (не копия
+  // числа): выше порога черновик уезжает в колонку, ниже — во вкладку, и это
+  // ОДИН запасной путь, общий с телефоном, а не третий режим.
+  const twoCols = useTwoColumns();
+  const draftTabs = aiStep && !twoCols;
+  // Вкладка — СОСТОЯНИЕ экрана, а не адрес: `?step=` называет шаг флоу, а это
+  // взгляд внутри одного шага (как детент шита). Записи истории на переключение
+  // вида сделали бы «назад» непредсказуемой.
+  const [panelTab, setPanelTab] = useState(/** @type {'talk' | 'draft'} */ ('talk'));
+  // Черновик мог исчезнуть (сброс) — вкладку нельзя оставлять выбранной: она
+  // выключена, а тело показывало бы пустой список.
+  useEffect(() => { if (!draftReady) setPanelTab('talk'); }, [draftReady]);
   /* ★ У ЧЕРНОВИКА ЕСТЬ ИМЯ, И ЕГО НАЗЫВАЕТ АДРЕС.
      Пока черновик был одним слотом на дверь, «создать новое» было некуда
      положить: планировщик писал в тот же слот и затирал начатое, а прикрыть это
@@ -1437,16 +1461,25 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     { mode: 'create', title: isAi ? t('planner.step_home_ai') : t('trips.new'), backTitle: blocked ? t('notif.to_collection') : backLabel },
     { onBack: blocked ? () => nav('/trips') : requestBack, confirmLeave },
   );
-  // Поверхность карты: конфиг шелла (детент/свёрнутость — состояние ЭКРАНА: шаг
-  // может осознанно опустить шит) и пропы общего `MapView`. Узлы маршрута едут в
+  // Поверхность карты: конфиг шелла (детент — состояние ЭКРАНА: шаг может
+  // осознанно опустить шит) и пропы общего `MapView`. Узлы маршрута едут в
   // карту КАК ЕСТЬ (тот же вид, что у визитов трипа: `kind`/координаты/id), без
   // переездов — все плечи пунктирные, транспорт добавляется уже в трипе.
   useShellSurface(
     blocked ? null : {
       panelLabel: t('trips.new'),
       detent, onDetentChange: setDetent,
-      collapsed, onCollapsedChange: setCollapsed,
-      collapseLabel: t('common.panel_collapse'), expandLabel: t('common.panel_expand'),
+      // Панель шага НЕ СВОРАЧИВАЕТСЯ (TRIP-535): на первом шаге сворачивать
+      // нечего — под ней композер, а не длинный маршрут, и кнопка на шве
+      // предлагала спрятать единственное, ради чего экран открыт. Тумблер
+      // рисует шелл ровно тогда, когда экран дал колбэк, поэтому «убрать
+      // кнопку» — это не передать его. У линзы маршрута он остаётся.
+      sideOpen: draftReady,
+      // Тело показывает новое содержимое с начала: шаг сменился — человек
+      // смотрит его сверху, а не с позиции, где бросил предыдущий (лента ИИ
+      // вдобавок стоит прокрученной вниз, к последней реплике). Успех — такая
+      // же смена содержимого, поэтому он часть ключа, а не отдельная ветка.
+      bodyKey: savedOk ? 'saved' : `${step}:${panelTab}`,
     },
     {
       visits: nodes, transfers: NO_TRANSFERS,
@@ -1572,8 +1605,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         />
       ) : (
         <>
+          {/* На ИИ-шаге тело показывает то, что выбрано вкладкой, — но ТОЛЬКО
+              пока вкладки есть. Условие здесь ровно то же (`draftTabs`), что
+              рисует переключатель: иначе окно, расширенное за порог, уносит
+              `Seg` и оставляет тело на черновике, который в этот момент уже
+              стоит в колонке, — а разговор становится недостижим, потому что
+              переключить его больше нечем. Второго состояния под это не
+              заводим: у «что показывать» один предикат. */}
           {step === 'home' && (isAi ? (
-            <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} nodes={nodes} />
+            draftTabs && panelTab === 'draft'
+              ? <DraftItinerary nodes={nodes} />
+              : <PanelAi aiMessages={aiMessages} onGenerate={onGenerate} />
           ) : (
             <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
           ))}
@@ -1615,7 +1657,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // На AI-шаге кнопок шага нет (`showFooter === false`) — «Далее» слита в сам
   // композер, — поэтому слот занимает он один, а не они вдвоём.
   // После сохранения слот пуст: успех владеет своими действиями (см. `showFooter`).
-  const FOOTER = (step === 'home' && isAi && !savedOk) ? (
+  const FOOTER = aiStep ? (
     <ChatComposer
       className="chat-composer--ai"
       hideMention
@@ -1660,26 +1702,67 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     <>
       <ShellSlot name="panelHead">
         <div className="flow-lp-h">
-          {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
-              "next" hint wraps INSIDE this column instead of overflowing and
-              shoving the reset control off the narrow mobile sheet header. */}
-          <div className="grow--fit">
-            <FlowProgress
-              steps={visibleSteps}
-              current={savedOk ? visibleSteps.length - 1 : stepIdx}
-              accent={isAi ? 'var(--ai)' : 'var(--brand)'}
-              onJump={savedOk ? undefined : (i) => setStep(visibleSteps[i].id, 'jump')}
+          <Row gap="g6" align="a-start">
+            {/* grow--fit (flex:1 + min-width:0) so the progress can shrink and its
+                "next" hint wraps INSIDE this column instead of overflowing and
+                shoving the reset control off the narrow mobile sheet header. */}
+            <div className="grow--fit">
+              <FlowProgress
+                steps={visibleSteps}
+                current={savedOk ? visibleSteps.length - 1 : stepIdx}
+                accent={isAi ? 'var(--ai)' : 'var(--brand)'}
+                onJump={savedOk ? undefined : (i) => setStep(visibleSteps[i].id, 'jump')}
+              />
+            </div>
+            {/* Сброс на AI-шаге (TRIP-527): футер здесь занят композером, а
+                переписка уже могла собрать маршрут, который хочется стереть.
+                Та же ручка `requestReset` (с подтверждением), что у футера
+                остальных шагов — второго сброса нет. */}
+            {aiStep && (
+              <IconBtn icon="refresh" tone="outline" ariaLabel={t('planner.reset')} onClick={requestReset} disabled={saving} />
+            )}
+          </Row>
+          {/* ВКЛАДКИ — ВТОРОЙ СТРОКОЙ ШАПКИ, ВО ВСЮ ЕЁ ШИРИНУ. Внутри ряда они
+              делили бы место со сбросом и не доезжали до правого края: на 390 px
+              это отняло бы у них 52 px из 358. Вкладка черновика ВЫКЛЮЧЕНА, пока
+              бот не собрал городов, — место под неё зарезервировано с первого
+              кадра, чтобы шапка не подпрыгивала на первом же ответе.
+              Примитив тот же `.seg`, что у фильтров и форк-панели; тап в шапке
+              шита принадлежит содержимому — шит его больше не перехватывает
+              (TRIP-535, разбор в `onEnd` у `PeekSheet`). */}
+          {draftTabs && (
+            <Seg
+              variant="fill"
+              ariaLabel={t('ai_plan.draft_title')}
+              value={panelTab}
+              onChange={(v) => setPanelTab(/** @type {'talk' | 'draft'} */ (v))}
+              options={[
+                { value: 'talk', label: t('ai_plan.tab_chat') },
+                { value: 'draft', label: t('ai_plan.draft_title'), disabled: !draftReady },
+              ]}
             />
-          </div>
-          {/* Сброс на AI-шаге (TRIP-527): футер здесь занят композером, а
-              переписка уже могла собрать маршрут, который хочется стереть.
-              Та же ручка `requestReset` (с подтверждением), что у футера
-              остальных шагов — второго сброса нет. */}
-          {isAi && step === 'home' && !savedOk && (
-            <IconBtn icon="refresh" tone="outline" ariaLabel={t('planner.reset')} onClick={requestReset} disabled={saving} />
           )}
         </div>
       </ShellSlot>
+      {/* Вторая колонка шелла: заголовок и список. Узлы слотов существуют,
+          только когда шелл согласился её показать (`sideOpen` + порог), поэтому
+          рендерить их можно безусловно — портал без узла ничего не рисует. */}
+      <ShellSlot name="sideHead">
+        {/* Заголовок и итог — одной колонкой: «N городов · M ночей» здесь не
+            украшение, а то, ради чего в черновик смотрят до того, как читать
+            ряды (пилюля на карте того же не говорит: её закрывает вторая
+            колонка ровно в этот момент). Числа — те же, что у пилюли, второго
+            счёта нет. */}
+        <Col gap="g1">
+          <h2 className="t-heading">{t('ai_plan.draft_title')}</h2>
+          <span className="t-meta muted">
+            {cities.length} {pluralize(t, cities.length, 'trip.cities_count', lang)}
+            {' · '}
+            {totalNights} {pluralize(t, totalNights, 'view.nights', lang)}
+          </span>
+        </Col>
+      </ShellSlot>
+      <ShellSlot name="sideBody"><DraftItinerary nodes={nodes} /></ShellSlot>
       <ShellSlot name="panelBody">{BODY}</ShellSlot>
       <ShellSlot name="panelFoot">{FOOTER}</ShellSlot>
       <ShellSlot name="mapOverlay">

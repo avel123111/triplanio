@@ -4,7 +4,7 @@ import { Card } from './index.jsx';
 import { Tooltip } from './Tooltip';
 import { IconBtn } from './IconBtn';
 import { PeekSheet } from '@/components/ui/PeekSheet';
-import { useIsPhone } from '@/hooks/use-mobile';
+import { useIsPhone, useTwoColumns } from '@/hooks/use-mobile';
 import { mapShellInsets } from '@/lib/mapShellInsets';
 import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
 
@@ -69,6 +69,8 @@ import { SURFACE_EASE_CSS, SURFACE_SETTLE_MS } from '@/lib/surfaceMotion';
  *   insetTop?: number,
  *   insetLeft?: number,
  *   overlayActive?: boolean,
+ *   sideOpen?: boolean,
+ *   bodyKey?: string,
  *   detents?: number[],
  *   detent?: number,
  *   onDetentChange?: (i: number) => void,
@@ -95,6 +97,14 @@ export function MapShell({
   //   panelBody    — скроллящееся тело панели.
   //   panelFoot    — панель действий (кнопки шага): на виду при любом скролле
   //                  тела, поэтому слот отдельный, а не «последний ребёнок».
+  //   sideHead /   — ВТОРАЯ КОЛОНКА: она выглядывает ИЗ-ПОД панели (слой ниже,
+  //   sideBody       заезд под неё на радиус) и уступает ей по высоте, поэтому
+  //                  читается приложенной сбоку, а не второй панелью. Живёт,
+  //                  только пока экран просит (`sideOpen`) И она помещается
+  //                  (`useTwoColumns`). Шапка отдельным слотом по той же
+  //                  причине, что у панели: воздух вокруг неё — свойство
+  //                  коробки шелла, и экран, повторяющий его у себя,
+  //                  разъезжается с ней на первой правке.
   //   panelOverlay — слой ПОВЕРХ панели во всю её высоту (ящик города/события у
   //                  редактора). Закрывает ровно панель и не трогает карту — по
   //                  ней в этот момент продолжают кликать. Соседствует с
@@ -127,6 +137,19 @@ export function MapShell({
   // уже после окна focus-driven — и обрывал бы летящий `calmFit`. Экран отдаёт
   // сюда факт открытости (сразу), а не присутствие узла.
   overlayActive = false,
+  // ЭКРАНУ ЕСТЬ ЧТО ПОКАЗАТЬ ВО ВТОРОЙ КОЛОНКЕ (черновик маршрута у визарда).
+  // Факт от экрана, а не присутствие узла в слоте: у соседнего `overlayActive`
+  // ровно та же причина — узел живёт дольше факта, и камера узнавала бы правду
+  // позже закрытия. Влезает ли колонка — решает шелл (`useTwoColumns`), поэтому
+  // экран объявляет НАМЕРЕНИЕ, а не раскладку.
+  sideOpen = false,
+  // ЧТО СЕЙЧАС ЛЕЖИТ В ТЕЛЕ — именем от экрана (шаг флоу, вкладка). Шелл не
+  // знает, что такое «шаг», но он ВЛАДЕЕТ скроллером: новое содержимое обязано
+  // показываться с начала, а не с той позиции, где человек бросил предыдущее.
+  // Ключ, а не колбэк «прокрути меня»: экран объявляет ФАКТ смены, а решение
+  // «начать сверху» принадлежит поверхности — и одинаково на панели и в шите,
+  // потому что тело у них одно и то же (слот `panelBody`).
+  bodyKey,
   detents = [0.15, 0.68, 1],
   detent = 0,
   onDetentChange,
@@ -137,8 +160,14 @@ export function MapShell({
   className = '',
 }) {
   const isPhone = useIsPhone();
+  // Вторая колонка существует, только если ЭКРАН её просит и она ПОМЕЩАЕТСЯ.
+  // Ниже порога слот не создаётся вовсе — экран сам увидит это тем же хуком и
+  // покажет черновик вкладкой, как на телефоне (один запасной путь, не два).
+  const twoCols = useTwoColumns();
+  const sideOn = !isPhone && twoCols && sideOpen;
   const rootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
+  const asideRef = useRef(/** @type {HTMLElement | null} */ (null));
   const statusRef = useRef(/** @type {HTMLElement | null} */ (null));
   const [sheetPx, setSheetPx] = useState(0);
   const [capPx, setCapPx] = useState(0);
@@ -155,11 +184,18 @@ export function MapShell({
     if (!slotRefs.current[name]) slotRefs.current[name] = (el) => onSlotRef.current?.(name, el);
     return slotRefs.current[name];
   };
+  // Тело — тот же слот на обеих платформах (в шите его отдаёт `onBodyRef`),
+  // поэтому и ссылка одна: правило «новое содержимое начинается сверху» живёт в
+  // одном месте, а не по разу на платформу.
+  const bodyRef = useRef(/** @type {HTMLElement | null} */ (null));
+  const bodySlot = useCallback((/** @type {HTMLElement | null} */ el) => { bodyRef.current = el; onSlotRef.current?.('panelBody', el); }, []);
+  useLayoutEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [bodyKey]);
+
   // Слот статуса меряется здесь же — ссылка одна, стабильная (см. `slot`).
   const statusSlot = useCallback((/** @type {HTMLElement | null} */ el) => { statusRef.current = el; onSlotRef.current?.('status', el); }, []);
   const insetTopRef = useRef(insetTop);
   insetTopRef.current = insetTop;
-  // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Ширина панели известна только после раскладки
+  // ★ «НЕ ИЗМЕРЕНО» ≠ «НОЛЬ». Правый край колонок известен только после раскладки
   // (`useLayoutEffect` ниже), а первый рендер шелла идёт до неё. Пока здесь стоял
   // ноль, карта на первом же кадре получала отступ 0 (маршрут центрировался ПОД
   // панелью), а через кадр — измеренные ~620 px, и `useMapInsets` честно ЕХАЛ из
@@ -169,11 +205,13 @@ export function MapShell({
   // это отдаётся коробками `null` в `view` — она ничего не трогает; замер приезжает
   // синхронным ре-рендером ДО отрисовки кадра, и первая настоящая величина
   // ставится без движения.
-  const [panelW, setPanelW] = useState(/** @type {number | null} */ (null));
-  // Правый край панели от края холста = полоса хоста слева + ширина панели.
-  // Левее панели закрыто НЕ панелью (рейл трипа над холстом), и это остаётся
+  // ШИРИНА КОЛОНОК — замером (см. `measureCols`), ПОЛОЖЕНИЕ — числом от хоста:
+  // полоса слева задана панели через `left` и анимируется, замер прочитал бы её
+  // на полпути. Их сумма и есть правый край колонок от края холста. Левее
+  // панели закрыто НЕ панелью (рейл трипа над холстом), и это остаётся
   // закрытым, когда панель свёрнута (`offsetPx`).
-  const panelPx = panelW === null ? null : insetLeft + panelW;
+  const [colsPx, setColsPx] = useState(/** @type {number | null} */ (null));
+  const panelPx = colsPx === null ? null : insetLeft + colsPx;
 
   // ★ ОСЕВШАЯ ВЫСОТА ШИТА ПРИМЕНЯЕТСЯ СРАЗУ, БЕЗ ОТКЛАДЫВАНИЯ. Задержка здесь
   // была, пока слот карты РЕЗАЛСЯ шитом: обрежь холст раньше, чем шит доедет, и
@@ -183,10 +221,11 @@ export function MapShell({
   // причины следующий читатель принял бы за работающий.
   const applySheetPx = useCallback((next, cap) => { setCapPx(cap || 0); setSheetPx(next); }, []);
 
-  // Ширину панели МЕРЯЕМ, а не берём из константы: она задана в CSS
-  // (`--mapshell-panel-w`, там `min()` от вьюпорта), и продублированное в JS
-  // число разъехалось бы с ней на первой же правке раскладки. Положение
-  // панели, напротив, приходит числом от хоста (`insetLeft`).
+  // Ширину колонок МЕРЯЕМ, а не берём из констант: она задана в CSS
+  // (`--mapshell-panel-w`/`--mapshell-aside-w`, там `clamp()` от вьюпорта), и
+  // продублированное в JS число разъехалось бы с ней на первой же правке
+  // раскладки. Положение колонок (полоса хоста слева) входит в тот же замер
+  // само — см. `measureCols`.
   // Живой сдвиг холста — мимо React (разбор у пропа `onHeightLive` шита).
   // Пока идёт жест, темп нулевой: холст уже там, где палец. На осадке темп
   // возвращается, и остаток пути доезжает той же кривой, что и шит.
@@ -201,19 +240,39 @@ export function MapShell({
     root.style.setProperty('--mapshell-attrib', `${shift + ATTRIB_AIR}px`);
   }, []);
 
-  const measurePanel = useCallback(() => {
-    const el = panelRef.current;
-    setPanelW(el ? Math.max(0, Math.round(el.getBoundingClientRect().width)) : 0);
+  // ★ МЕРИМ ПРАВЫЙ КРАЙ САМОЙ ПРАВОЙ КОЛОНКИ, А НЕ СУММУ ШИРИН. Колонок стало
+  // две, и вторая ЗАЕЗЖАЕТ под первую на радиус (она выглядывает из-под неё) —
+  // сумма ширин посчитала бы нахлёст дважды. Правый край считается в
+  // координатах РАСКЛАДКИ (`offsetLeft + offsetWidth`, offsetParent = сам
+  // шелл): свёрнутая панель уезжает `transform`-ом, а он на них не влияет —
+  // `getBoundingClientRect().right` уехал бы вместе с ней и отдал бы карте
+  // ложную полосу на все 320 мс анимации.
+  //
+  // ★ ПОЛОСА ХОСТА СЛЕВА (РЕЙЛ) В ЗАМЕР НЕ ВХОДИТ — ОНА ПРИХОДИТ ЧИСЛОМ. Она
+  // задана панели через `left` и АНИМИРУЕТСЯ (визард → трип, 0 → ширина рейла):
+  // замер прочитал бы её на полпути, а перезапустить его было бы нечему —
+  // ResizeObserver видит РАЗМЕР, а не позицию, и при неизменной ширине панели
+  // молчит. Поэтому меряем ШИРИНУ колонок (правый край минус левый край
+  // панели), а полосу хоста прибавляет `panelPx` тем же рендером, что её
+  // получил.
+  const measureCols = useCallback(() => {
+    const rightEdge = (/** @type {HTMLElement | null} */ el) => (el ? el.offsetLeft + el.offsetWidth : 0);
+    const left = panelRef.current ? panelRef.current.offsetLeft : 0;
+    const px = Math.max(rightEdge(panelRef.current), rightEdge(asideRef.current)) - left;
+    setColsPx(Math.max(0, Math.round(px)));
   }, []);
 
   useLayoutEffect(() => {
-    if (isPhone) { setPanelW(0); return undefined; }
-    measurePanel();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measurePanel) : null;
+    if (isPhone) { setColsPx(0); return undefined; }
+    measureCols();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measureCols) : null;
     if (ro && panelRef.current) ro.observe(panelRef.current);
-    window.addEventListener('resize', measurePanel);
-    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measurePanel); };
-  }, [isPhone, measurePanel]);
+    if (ro && asideRef.current) ro.observe(asideRef.current);
+    window.addEventListener('resize', measureCols);
+    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measureCols); };
+    // `sideOn` в зависимостях: появление и уход колонки меняют правый край, а
+    // ResizeObserver на несуществующем узле ничего не скажет.
+  }, [isPhone, sideOn, measureCols]);
 
   // Полоса статуса: ноль, пока слот пуст (пилюли нет, ноль ночей).
   useLayoutEffect(() => {
@@ -295,7 +354,7 @@ export function MapShell({
           onDetentChange={onDetentChange}
           onHeightChange={applySheetPx}
           onHeightLive={onSheetLive}
-          onBodyRef={slot('panelBody')}
+          onBodyRef={bodySlot}
           header={head}
           footer={foot}
           label={panelLabel}
@@ -321,7 +380,7 @@ export function MapShell({
                 отдаёт содержимое, а не рисует себе карточку заново. */}
             <Card pad="none" radius="btn" raised className="mapshell__card">
               {head}
-              <div className="mapshell__body scrollbar-thin" ref={slot('panelBody')} />
+              <div className="mapshell__body scrollbar-thin" ref={bodySlot} />
               {foot}
             </Card>
           </aside>
@@ -354,6 +413,22 @@ export function MapShell({
                 />
               </Tooltip>
             </div>
+          )}
+          {/* ★ ЧЕРНОВИК ВЫГЛЯДЫВАЕТ ИЗ-ПОД ПАНЕЛИ — ЭТО ПОРЯДОК СЛОЁВ, А НЕ РИСУНОК.
+              Колонка лежит НИЖЕ панели (`z-index`, см. CSS) и заезжает под неё
+              на радиус, поэтому её левый край и тень уходят под панель
+              по-настоящему; карточке остаётся снять то, чего у спрятанной
+              стороны быть не может, — левую границу и левые скругления.
+              Соседствует с панелью, а не лежит в ней: у панели своя высота,
+              свой скролл и своё сворачивание (у линзы), и колонка не обязана
+              их наследовать. */}
+          {sideOn && (
+            <aside className="mapshell__aside" ref={asideRef}>
+              <Card pad="none" radius="btn" raised className="mapshell__card">
+                <div className="mapshell__head" ref={slot('sideHead')} />
+                <div className="mapshell__body scrollbar-thin" ref={slot('sideBody')} />
+              </Card>
+            </aside>
           )}
           {/* Слой города/события — НЕЗАВИСИМ от колонки панели (TRIP-195 доводка):
               он сосед `.mapshell__panel`, а не её потомок, поэтому сворачивание
