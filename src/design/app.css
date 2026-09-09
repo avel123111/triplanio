@@ -8608,7 +8608,19 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    внутри неё, а не уезжает под нижний край экрана. Во время жеста высота НЕ
    пересчитывается (`--sheet-h` фиксируется на осадке): иначе каждый кадр драга
    стоил бы перекладку всего списка. */
-.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px) - var(--sheet-reserve, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+/* ★★ МЕСТО ПОД КЛАВИАТУРУ ЗАБИРАЕТ ТЕЛО, И ЭТО ЕДИНСТВЕННОЕ, ЧТО ОНА МЕНЯЕТ
+   (TRIP-535). Коробка, детенты и положение шита от клавиатуры не зависят вовсе
+   (высота считается от РАСКЛАДОЧНОГО вьюпорта, разбор у `viewportH` в
+   `PeekSheet`), поэтому композер поднимает над ней не арифметика, а вычет у
+   скроллера: тело короче на `--kb-h`, футер ровно на столько же выше.
+   ⚠️ ИМЕННО У ТЕЛА, А НЕ У ФУТЕРА. Высота футера ИЗМЕРЯЕТСЯ (`footPx`) и через
+   `reservePx → minPx` возвращается в детенты — то есть в геометрию его же
+   контейнера. Отступ под клавиатуру там давал петлю обратной связи: пол детентов
+   поднимался на её высоту (замер 293 → 521), тело схлопывалось в ноль, а
+   композер уезжал ПОД клавиатуру. У тела петли нет: его высота ВЫВОДИТСЯ из
+   `--sheet-h`, а не измеряется.
+   visual-diff-exempt: .peek-sheet__body height — тело короче на высоту клавиатуры: место под неё даёт скроллер, а не пересчёт коробки */
+.peek-sheet__body { flex: none; height: calc(var(--sheet-h, 100dvh) - var(--sheet-head, 0px) - var(--sheet-reserve, 0px) - var(--kb-h, 0px)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).
