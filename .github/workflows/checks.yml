@@ -142,6 +142,7 @@ jobs:
   #   2af check-destructive-confirm  — a destructive control that WRITES must go through confirm() (2ab checks the copy, 2af checks the canon is used at all)
   #   2ac check-site-prefixes        — a new CSS class-name prefix in public/site.css (site DS namespace) needs approval (TRIP-446)
   #   2ad check-site-nav             — internal <a href> in the site zone reloads the doc and drops the campaign mark (TRIP-456)
+  #   2ah check-zone-lang-links     — переход зоны на локализованную страницу (`/`, демо) обязан нести язык, иначе он сбросится в английский (TRIP-520)
   #   2ab check-ds-boundary         — the site zone must not import the app's design system (TRIP-446)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
@@ -224,6 +225,9 @@ jobs:
       - name: 2ad — site nav (internal links go through the router, not <a href>)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-site-nav.mjs
+      - name: 2ah — zone lang links (ссылка на локализованную страницу несёт язык)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-zone-lang-links.mjs
       - name: 2ae — site primitive dup (класс объявлен одиночкой и в site.css, и в app.css — вторая база)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-site-primitive-dup.mjs

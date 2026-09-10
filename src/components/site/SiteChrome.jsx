@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef, useContext, createContext, useCallback } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { afterPaint } from '@/lib/afterPaint';
 import { useLightZone } from '@/lib/ThemeContext';
 import { holdSplash } from '@/lib/splash';
 import { openConsentBanner } from '@/lib/consent';
 import { isProdHost } from '@/lib/analyticsEnv';
-import { isZonePage, splitLangPath, withLangPath, PREFIXED_LANGS, LOCALISED_PAGES } from '@/lib/routePaths';
-import { useZoneCta, isPlainLeftClick, useZonePath } from './zoneCta';
+import { isZonePage, splitLangPath, withLangPath, PREFIXED_LANGS, LOCALISED_PAGES, HREFLANG_PAGES } from '@/lib/routePaths';
+import { useZoneCta, isPlainLeftClick, useZoneHref, useZoneNav } from './zoneCta';
 import { withVisitCampaign } from '@/lib/analytics';
 import { zoneSurface } from '@/lib/zoneSurface';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import LandingSprite from './LandingSprite';
+import ZoneLink from './ZoneLink';
 
 /* =========================================================
    SiteChrome — shared marketing header/footer + site-CSS loader.
@@ -106,7 +107,12 @@ export function LangSwitch({ value, onChange }) {
 export function useZoneLang() {
   const { lang, setLang } = useI18n();
   const { pathname, search, hash } = useLocation();
-  const navigate = useNavigate();
+  // Адрес соседнего языка строит ДВЕРЬ, а не голый `withLangPath`: у переключателя
+  // единственная во всей зоне законная причина назвать язык явно, и он делает это
+  // ПАРАМЕТРОМ двери, а не собственной сборкой адреса. Дверь идемпотентна, поэтому
+  // уже собранный адрес проходит через `nav` без изменений.
+  const href = useZoneHref();
+  const nav = useZoneNav();
   const { path } = splitLangPath(pathname);
   const localised = LOCALISED_PAGES.includes(path);
 
@@ -116,12 +122,12 @@ export function useZoneLang() {
     // Метка кампании живёт В АДРЕСЕ (TRIP-514) — переносим её на новый адрес
     // руками, а `search`/`hash` сохраняем: якорь `#together` не должен теряться
     // от смены языка.
-    const target = withVisitCampaign(withLangPath(next, path));
+    const target = withVisitCampaign(href(path, next));
     const [tPath, tQuery] = target.split('?');
     const query = tQuery ? `?${tQuery}` : search;
-    navigate(`${tPath}${query}${hash}`);
+    nav(`${tPath}${query}${hash}`, { lang: next });
     return undefined;
-  }, [localised, path, lang, setLang, navigate, search, hash]);
+  }, [localised, path, lang, setLang, href, nav, search, hash]);
 
   return { lang, setLang: switchLang };
 }
@@ -155,7 +161,7 @@ const HDR_THEMES = new Set(['light', 'dark', 'accent']);
  * этом сохраняется: она в самом адресе, а не в состоянии документа.
  */
 function useBrandNav(brandHref) {
-  const nav = useNavigate();
+  const nav = useZoneNav();
   return (e) => {
     // Якорь на этой же странице (`#top` на лендинге) — родное поведение браузера.
     if (!brandHref || brandHref.startsWith('#')) return;
@@ -199,7 +205,6 @@ function useBrandNav(brandHref) {
 
 export function SiteHeader({ lang, setLang, variant = 'full', themed = false, navBase = '', brandHref = '#top', navItems = NAV }) {
   const t = useT();
-  const nav = useNavigate();
   const location = useLocation();
   // Три CTA шапки: кнопка справа и два верхних пункта бургера. Адрес, метку
   // страницы и обработку клика им даёт ОДИН хелпер — здесь остаётся только
@@ -216,7 +221,7 @@ export function SiteHeader({ lang, setLang, variant = 'full', themed = false, na
   // страницу, то есть язык терялся на первом же переходе внутри зоны. Ловится
   // тестом `zoneLangLinks.test.js`: адрес переведённой страницы внутри зоны
   // обязан строиться `zonePath`, а не литералом.
-  const menuDemo = useZoneCta('menu_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
+  const menuDemo = useZoneCta('menu_demo', withVisitCampaign(DEMO_PATH));
   const menuSignin = useZoneCta('menu_signin');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -372,8 +377,8 @@ export function SiteFooter({ lang, setLang, brandHref = '#top' }) {
             {/* Ф6.6 (TRIP-465): /terms и /privacy — маршруты приложения, статический
                 HTML + rewrite'ы удалены. Роутерный переход держит документ (и снимок
                 кампании) живым — без перезагрузки. */}
-            <Link to="/terms">{t('landing.ft.terms')}</Link>
-            <Link to="/privacy">{t('landing.ft.privacy')}</Link>
+            <ZoneLink to="/terms">{t('landing.ft.terms')}</ZoneLink>
+            <ZoneLink to="/privacy">{t('landing.ft.privacy')}</ZoneLink>
             {/* Where an anonymous visitor changes their mind — the app itself has no
                 footer, so this is the only route for someone who never signed up.
                 Reopens the panel; nothing changes until a button in it is pressed. */}
@@ -604,14 +609,13 @@ export function SiteZone({ children }) {
   //
   // ★ РЯДОМ С CANONICAL — СПИСОК ЯЗЫКОВЫХ ВЕРСИЙ (TRIP-520). Пока язык жил в
   // состоянии приложения, связывать было нечего, и `hreflang` здесь сознательно
-  // отсутствовал. Теперь у каждой испечённой страницы три адреса, и без этого
-  // списка поисковик видит три РАЗНЫЕ страницы вместо трёх версий одной: они
-  // конкурируют друг с другом, а испанцу в выдаче показывается английская.
-  // `x-default` — тот же бесперфиксный адрес: он и есть ответ на «язык
-  // посетителя нам неизвестен».
+  // отсутствовал. Теперь у страницы три адреса, и без этого списка поисковик
+  // видит три РАЗНЫЕ страницы вместо трёх версий одной: они конкурируют друг с
+  // другом, а испанцу в выдаче показывается английская. `x-default` — тот же
+  // беспрефиксный адрес: он и есть ответ на «язык посетителя нам неизвестен».
   //
-  // Только у испечённых страниц: у входа и восстановления языковых адресов нет
-  // (готового файла на язык у них нет и быть не может), и обещать их нельзя.
+  // Только у тех, чьи версии мы поиску ОБЕЩАЕМ (`HREFLANG_PAGES`) — это уже не
+  // все, у кого языковой адрес есть; разбор различия — ниже, у самой развилки.
   //
   // ★★ СНАЧАЛА СНОСИМ ЧУЖИЕ, ПОТОМ СТАВИМ СВОИ (TRIP-520). У испечённой страницы
   // эти теги УЖЕ ЛЕЖАТ В ФАЙЛЕ — выпечка сняла их с этого же эффекта. Добавь мы
@@ -640,8 +644,21 @@ export function SiteZone({ children }) {
       document.head.appendChild(link);
       links.push(link);
     };
-    add('canonical', pathname);
-    if (LOCALISED_PAGES.includes(path)) {
+    // ★★ КАНОНИЧЕСКИЙ АДРЕС ЗАВИСИТ ОТ ТОГО, ОБЕЩАЕМ ЛИ МЫ ЯЗЫКОВЫЕ ВЕРСИИ
+    // (TRIP-533). Языковой адрес теперь есть у ВСЕЙ зоны, а обещание поиску —
+    // только у лендинга и демо (`HREFLANG_PAGES`), и это две разные вещи:
+    //
+    //   · обещаем  → каждая версия каноническая САМА СЕБЕ, и они связаны
+    //     hreflang; иначе поисковик видит три разные страницы вместо трёх
+    //     версий одной, они конкурируют, и испанцу показывается английская;
+    //   · не обещаем → языковая форма существует и работает, но в индексе ей
+    //     делать нечего: `/es/login` и `/es/terms` почти дословно повторяют
+    //     беспрефиксные, а у юр-документов проза вообще одна и та же
+    //     английская. Канонизируем их на беспрефиксную форму — тогда вес не
+    //     дробится, а дублей в выдаче не появляется.
+    const advertised = HREFLANG_PAGES.includes(path);
+    add('canonical', advertised ? pathname : path);
+    if (advertised) {
       add('alternate', path, 'en');
       for (const code of PREFIXED_LANGS) add('alternate', withLangPath(code, path), code);
       add('alternate', path, 'x-default');

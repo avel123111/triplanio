@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { queryGateKind } from '@/lib/loadStateClassify';
+import { useZoneHref } from '@/components/site/zoneCta';
+import { LOGIN_PATH } from '@/lib/authEntry';
 
 // Shared load gate (TRIP-56). Maps a React-Query result onto the screen kind
 // ('loading' | 'auth' | 'temporary' | 'access' | 'ok') and auto-redirects a dead
@@ -20,6 +22,7 @@ import { queryGateKind } from '@/lib/loadStateClassify';
 // @returns {'loading'|'auth'|'temporary'|'access'|'ok'}
 export function useQueryGate(query, hasData, emptyIsOk = true) {
   const nav = useNavigate();
+  const zoneHref = useZoneHref();
   const kind = queryGateKind({
     isPending: query.isPending,
     fetchStatus: query.fetchStatus,
@@ -28,7 +31,10 @@ export function useQueryGate(query, hasData, emptyIsOk = true) {
     emptyIsOk,
   });
   useEffect(() => {
-    if (kind === 'auth') nav('/login', { replace: true });
-  }, [kind, nav]);
+    // Адрес входа — через резолвер зоны, а не голым `/login` (TRIP-533; почему
+    // именно так — в докблоке `useZoneHref`). Он стабилен (`useCallback`),
+    // поэтому и стоит в зависимостях, не гоняя эффект.
+    if (kind === 'auth') nav(zoneHref(LOGIN_PATH), { replace: true });
+  }, [kind, nav, zoneHref]);
   return kind;
 }

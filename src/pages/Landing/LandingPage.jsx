@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useZoneCta, useZonePath } from '@/components/site/zoneCta';
+import { useZoneCta } from '@/components/site/zoneCta';
 import { DEMO_PATH } from '@/pages/Demo/demoPath';
 import { useJsonLd, faqPageLd, softwareAppLd } from '@/components/site/jsonLd';
 import { withVisitCampaign } from '@/lib/analytics';
@@ -190,7 +190,7 @@ function Hero() {
   // тем же событием `cta_clicked`, что и финальный CTA `final_demo`:
   // единственное отличие — метка места `hero_demo` (верх воронки против низа).
   const cta = useZoneCta('hero');
-  const demo = useZoneCta('hero_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
+  const demo = useZoneCta('hero_demo', withVisitCampaign(DEMO_PATH));
   // Один текст героя на обе платформы (TRIP-510): десктоп и телефон делят одни
   // ключи `landing.hero.*`, различия раскладки живут только в CSS `@media`,
   // поэтому DOM единый — без ветки по брейкпоинту.
@@ -516,7 +516,7 @@ function FinalCta() {
   // Единственный CTA зоны, ведущий НЕ в продукт, — отсюда явный адрес. Метку
   // кампании визита он несёт так же, как остальные, и идёт через роутер, а не
   // голым <a href>, который её теряет (гард 2ad).
-  const demo = useZoneCta('final_demo', withVisitCampaign(useZonePath(DEMO_PATH)));
+  const demo = useZoneCta('final_demo', withVisitCampaign(DEMO_PATH));
   return (
     <SiteCta
       secondary={(

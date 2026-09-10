@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { track, setRefTripId } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
@@ -10,6 +10,10 @@ import AuthShell from '@/components/site/AuthShell';
 // проверкой адреса — здесь только вызовы (TRIP-497).
 import { rememberPostLogin, forgetPostLogin } from '@/lib/postLoginPath';
 import { SIGNUP_PATH } from '@/lib/authEntry';
+// Переход — через ДВЕРЬ зоны: она сама решает, нужен ли адресу языковой префикс
+// (`/` станет `/es`, `/trips` останется собой). Голый `/` канонически английский
+// и как верхний слой языка перебивает и профиль, и выбор посетителя.
+import { useZoneNav } from '@/components/site/zoneCta';
 
 
 // Maps the invite-link edge function's machine `code` to its error i18n key.
@@ -24,7 +28,7 @@ const ERR_KEY_BY_CODE = {
 
 export default function JoinTrip() {
   const { token } = useParams();
-  const nav = useNavigate();
+  const nav = useZoneNav();
   const { t, lang, setLang } = useI18n();
   const cssReady = useSiteCss(); // зонная ДС; не рисуем до готовности (FOUC-иконки)
   const [state, setState] = useState('working'); // working | signin | error

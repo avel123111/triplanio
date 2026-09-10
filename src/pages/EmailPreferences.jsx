@@ -2,7 +2,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { invokeFn } from '@/lib/invokeFn';
-import { useT } from '@/lib/i18n/I18nContext';
+import { useI18n } from '@/lib/i18n/I18nContext';
+// Главная — АДРЕС ТОГО ЖЕ ЯЗЫКА (TRIP-520). Экран стоит ВНЕ зоны и ссылается на
+// главную полной перезагрузкой (у него нет ни шапки сайта, ни её роутинга),
+// поэтому язык обязан ехать В АДРЕСЕ: голый `/` — канонически английская
+// страница, и уход на неё сменил бы язык прямо посреди отписки.
+import { withLangPath } from '@/lib/routePaths';
 import { Card, Toggle } from '@/design/index';
 import { Btn } from '@/design/Btn';
 import { Col, Row } from '@/design/Layout';
@@ -29,7 +34,8 @@ import { buildRows, changedTopics, hasChanges } from '@/lib/emailPrefs';
    ============================================================================= */
 
 export default function EmailPreferences() {
-  const t = useT();
+  const { t, lang } = useI18n();
+  const home = withLangPath(lang, '/');
   const [params] = useSearchParams();
   // `c` есть только у ссылки ИЗ ПИСЬМА. В аккаунте его нет и быть не должно:
   // залогиненного человека функция узнаёт по его же сессии, и передавать сюда
@@ -225,7 +231,7 @@ export default function EmailPreferences() {
           задан АТРИБУТАМИ, а не стилем: это его собственная величина, а не
           оформление — инлайн здесь был бы храповиком 2l на ровном месте. */}
       <Row gap="g3" inline>
-        <a href="/" aria-label="Triplanio">
+        <a href={home} aria-label={t('nav.aria_home')}>
           <img src="/triplanio-logo.svg" alt="" width="34" height="34" />
         </a>
         <span className="t-subheading">Triplanio</span>{/* i18n-ignore — имя бренда */}
@@ -237,7 +243,7 @@ export default function EmailPreferences() {
           в нём есть переведённая строка. */}
       {phase !== 'loading' && (
         <Row wrap>
-          <a className="t-meta" href="/">triplanio.com</a>{/* i18n-ignore — адрес сайта */}
+          <a className="t-meta" href={home}>triplanio.com</a>{/* i18n-ignore — адрес сайта */}
           <a className="t-meta" href="/privacy">{t('email_prefs.privacy')}</a>
         </Row>
       )}

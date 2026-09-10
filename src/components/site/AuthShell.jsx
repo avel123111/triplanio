@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { useT } from '@/lib/i18n/I18nContext';
 import { BRAND_NAME } from '@/lib/brand';
 import { LangSwitch } from '@/components/site/SiteChrome';
+import ZoneLink from '@/components/site/ZoneLink';
 import LandingSprite from '@/components/site/LandingSprite';
 
 /* =========================================================
@@ -66,10 +66,10 @@ export default function AuthShell({ lang, setLang, activeScreen, children }) {
         {/* on-light: светлая шапка — темит общий LangSwitch (.lang-btn) в ink,
             как на светлых секциях лендинга. Реюз, не дубль (rule #6). */}
         <header className="pane-top on-light">
-          <Link to="/" className="av-brand">
+          <ZoneLink to="/" className="av-brand">
             <svg className="av-logo" width="33" height="33" aria-hidden="true"><use href="#tl-logo" /></svg>
             <span>{BRAND_NAME}</span>
-          </Link>
+          </ZoneLink>
           <div className="top-actions">
             <LangSwitch value={lang} onChange={setLang} />
           </div>
@@ -81,8 +81,8 @@ export default function AuthShell({ lang, setLang, activeScreen, children }) {
 
         <footer className="pane-foot">
           <span>© 2026 {BRAND_NAME}</span>{/* i18n-ignore: год + бренд, как в прототипе */}
-          <Link to="/terms">{t('auth.foot_terms')}</Link>
-          <Link to="/privacy">{t('auth.foot_privacy')}</Link>
+          <ZoneLink to="/terms">{t('auth.foot_terms')}</ZoneLink>
+          <ZoneLink to="/privacy">{t('auth.foot_privacy')}</ZoneLink>
           {/* mailto — внешний протокол (не internal href), как в футере лендинга */}
           <a href="mailto:support@triplanio.com">{t('auth.foot_support')}</a>
           <span className="secure">
